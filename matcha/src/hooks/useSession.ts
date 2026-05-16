@@ -3,10 +3,10 @@ import {
   useContext,
   useReducer,
   useEffect,
-  ReactNode,
   createElement,
 } from 'react'
-import { Session, MatchType, Player, Court, Match, Score } from '../types'
+import type { ReactNode } from 'react'
+import type { Session, MatchType, Player, Court, Match, Score } from '../types'
 import { loadSession, saveSession, clearSession } from '../infrastructure/storage'
 import { generateRound, generateMatchKey, generateSingleMatch } from '../domain/matchGenerator'
 

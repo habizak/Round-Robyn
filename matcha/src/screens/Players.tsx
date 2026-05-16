@@ -4,7 +4,7 @@ import { useSession } from '../hooks/useSession'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { MAX_PLAYERS, MIN_PLAYERS_SINGLES, MIN_PLAYERS_DOUBLES } from '../domain/constants'
-import { Player } from '../types'
+import type { Player } from '../types'
 
 export function Players() {
   const { session, dispatch } = useSession()

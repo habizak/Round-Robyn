@@ -1,4 +1,4 @@
-import { Session } from '../types'
+import type { Session } from '../types'
 import { STORAGE_KEY } from '../domain/constants'
 
 export function loadSession(): Session | null {
