@@ -36,11 +36,20 @@ export function areDisjoint(team1: Player[], team2: Player[]): boolean {
 
 /**
  * Produces a canonical key for a matchup that is order-independent
- * (both team order and player order within a team).
+ * (both team order and player order within a team), but DOES distinguish
+ * different team groupings (e.g. {p1,p2} vs {p3,p4} ≠ {p1,p3} vs {p2,p4}).
+ *
+ * Algorithm:
+ *   1. Sort each team's player IDs alphabetically.
+ *   2. Sort the two sorted teams relative to each other.
+ *   3. Join with '||' between teams and '|' within a team.
  */
 export function getMatchKey(team1: string[], team2: string[]): string {
-  const sorted = [...team1, ...team2].sort()
-  return sorted.join('|')
+  const t1 = [...team1].sort()
+  const t2 = [...team2].sort()
+  // Canonical team order: lexicographically smaller team goes first
+  const [first, second] = t1.join('|') <= t2.join('|') ? [t1, t2] : [t2, t1]
+  return `${first.join('|')}||${second.join('|')}`
 }
 
 /**
@@ -211,10 +220,13 @@ export function generateRound(
   // Shuffle for variety while respecting priority
   const shuffled = shuffle(candidateMatchups)
 
-  // Greedily assign matchups to courts, ensuring no player repeats
+  // Greedily assign matchups to courts.
+  // Primary pass: no player reuse (ideal).
+  // Fallback pass: allow player reuse when courts exceed unique-player capacity.
   const matches: Match[] = []
   const usedPlayerIds = new Set<string>()
   let matchNum = currentMatchNumber ?? 0
+  const remainingCourts: Court[] = []
 
   for (const court of availableCourts) {
     if (shuffled.length === 0) break
@@ -222,7 +234,10 @@ export function generateRound(
       const allP = [...t1, ...t2]
       return allP.every(id => !usedPlayerIds.has(id))
     })
-    if (idx === -1) break
+    if (idx === -1) {
+      remainingCourts.push(court)
+      continue
+    }
     const [team1, team2] = shuffled.splice(idx, 1)[0]
     ;[...team1, ...team2].forEach(id => usedPlayerIds.add(id))
     matches.push({
@@ -234,6 +249,28 @@ export function generateRound(
       matchNumber: matchNum++,
       round: currentRound ?? 0,
     })
+  }
+
+  // Fallback: fill remaining courts even if players are reused
+  if (remainingCourts.length > 0 && (freshMatchups.length > 0 || allMatchups.length > 0)) {
+    const fallbackPool = shuffle(freshMatchups.length > 0 ? freshMatchups : allMatchups)
+    const assignedMatchKeys = new Set(matches.map(m => getMatchKey(m.team1, m.team2)))
+
+    for (const court of remainingCourts) {
+      const idx = fallbackPool.findIndex(([t1, t2]) => !assignedMatchKeys.has(getMatchKey(t1, t2)))
+      if (idx === -1) break
+      const [team1, team2] = fallbackPool.splice(idx, 1)[0]
+      assignedMatchKeys.add(getMatchKey(team1, team2))
+      matches.push({
+        id: crypto.randomUUID(),
+        courtId: court.id,
+        team1,
+        team2,
+        status: 'pending',
+        matchNumber: matchNum++,
+        round: currentRound ?? 0,
+      })
+    }
   }
 
   // Determine benched players (those not in any match)
