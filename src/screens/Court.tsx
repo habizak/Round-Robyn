@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSession } from '../hooks/useSession'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
+import { SetupScreenLayout } from '../components/SetupScreenLayout'
 import { MAX_COURTS } from '../domain/constants'
 
 const backNavStyle: React.CSSProperties = {
@@ -61,20 +62,23 @@ export function Court() {
   const reversedCourts = [...courts].reverse()
 
   return (
-    <div
-      style={{
-        maxWidth: '420px',
-        margin: '0 auto',
-        padding: '24px',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
+    <SetupScreenLayout
+      backButton={(
+        <button style={backNavStyle} onClick={() => navigate('/setup/winning-point')}>
+          ‹ Winning Point
+        </button>
+      )}
+      footer={(
+        <Button
+          variant="primary"
+          fullWidth
+          disabled={courts.length === 0}
+          onClick={handleGenerate}
+        >
+          Generate Match
+        </Button>
+      )}
     >
-      <button style={backNavStyle} onClick={() => navigate('/setup/winning-point')}>
-        ‹ Winning Point
-      </button>
-
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
@@ -155,16 +159,6 @@ export function Court() {
         })}
       </div>
 
-      <div style={{ marginTop: '24px' }}>
-        <Button
-          variant="primary"
-          fullWidth
-          disabled={courts.length === 0}
-          onClick={handleGenerate}
-        >
-          Generate Match
-        </Button>
-      </div>
-    </div>
+    </SetupScreenLayout>
   )
 }

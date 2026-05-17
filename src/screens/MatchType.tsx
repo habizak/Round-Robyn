@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { MatchType } from '../types'
 import { useSession } from '../hooks/useSession'
 import { Button } from '../components/Button'
+import { SetupScreenLayout } from '../components/SetupScreenLayout'
 
 const SINGLES_OPTION = {
   value: 'singles' as MatchType,
@@ -71,20 +72,23 @@ export function MatchType() {
   }
 
   return (
-    <div
-      style={{
-        maxWidth: '420px',
-        margin: '0 auto',
-        padding: '24px',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
+    <SetupScreenLayout
+      backButton={(
+        <button style={backNavStyle} onClick={() => navigate('/')}>
+          ‹ Back
+        </button>
+      )}
+      footer={(
+        <Button
+          variant="primary"
+          fullWidth
+          disabled={!selected}
+          onClick={handleNext}
+        >
+          Players ›
+        </Button>
+      )}
     >
-      <button style={backNavStyle} onClick={() => navigate('/')}>
-        ‹ Back
-      </button>
-
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
@@ -183,16 +187,6 @@ export function MatchType() {
         ))}
       </div>
 
-      <div style={{ marginTop: 'auto', paddingTop: '32px' }}>
-        <Button
-          variant="primary"
-          fullWidth
-          disabled={!selected}
-          onClick={handleNext}
-        >
-          Players ›
-        </Button>
-      </div>
-    </div>
+    </SetupScreenLayout>
   )
 }

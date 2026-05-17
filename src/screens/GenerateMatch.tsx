@@ -42,6 +42,79 @@ function formatSide(session: Session, ids: string[]): string {
   return ids.map(id => getPlayerName(session, id)).join(' & ')
 }
 
+function MatchOptionPicker({
+  filteredOptions,
+  allScoredOptions,
+  session,
+  onSubmit,
+}: {
+  filteredOptions: MatchOption[]
+  allScoredOptions: MatchOption[]
+  session: Session
+  onSubmit: (option: MatchOption) => void
+}) {
+  const [page, setPage] = useState(0)
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+
+  const visibleOptions = filteredOptions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const canRegenerate = filteredOptions.length > PAGE_SIZE
+  const selectedOption = visibleOptions.find(o => o.key === selectedKey) ?? null
+
+  function handleRegenerate() {
+    const nextPage = (page + 1) * PAGE_SIZE < filteredOptions.length ? page + 1 : 0
+    setPage(nextPage)
+    setSelectedKey(null)
+  }
+
+  return (
+    <>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {visibleOptions.length === 0 ? (
+          <p
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '14px',
+              color: '#9a9a9a',
+              textAlign: 'center',
+              marginTop: '24px',
+            }}
+          >
+            {allScoredOptions.length === 0
+              ? 'No match options available right now.'
+              : 'No options match this filter.'}
+          </p>
+        ) : (
+          visibleOptions.map(option => (
+            <MatchOptionCard
+              key={option.key}
+              option={option}
+              session={session}
+              selected={selectedOption?.key === option.key}
+              onSelect={() => setSelectedKey(option.key)}
+            />
+          ))
+        )}
+      </div>
+
+      <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {canRegenerate && (
+          <Button variant="outline-pill" fullWidth onClick={handleRegenerate}>
+            ↻ Re-generate
+          </Button>
+        )}
+        <Button
+          variant="primary"
+          fullWidth
+          disabled={!selectedOption}
+          onClick={() => selectedOption && onSubmit(selectedOption)}
+        >
+          Submit
+        </Button>
+      </div>
+    </>
+  )
+}
+
 function MatchOptionCard({
   option,
   session,
@@ -87,10 +160,8 @@ export function GenerateMatch() {
   const { courtId } = useParams<{ courtId: string }>()
   const { session, dispatch } = useSession()
   const navigate = useNavigate()
-  const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [filterModalOpen, setFilterModalOpen] = useState(false)
   const [filterPlayerIds, setFilterPlayerIds] = useState<string[]>([])
-  const [page, setPage] = useState(0)
 
   const court = session.courts.find(c => c.id === courtId)
   const canGenerate = courtId ? canGenerateOnCourt(session, courtId) : { valid: false }
@@ -100,10 +171,6 @@ export function GenerateMatch() {
       navigate('/match', { replace: true })
     }
   }, [courtId, court, canGenerate.valid, navigate])
-
-  useEffect(() => {
-    setFilterPlayerIds([])
-  }, [])
 
   const allScoredOptions = useMemo(() => {
     const activeIds = getActivePlayerIds(session.matches)
@@ -116,28 +183,14 @@ export function GenerateMatch() {
       100,
       matchCounts,
     )
-  }, [session.players, session.matchType, session.matches])
+  }, [session])
 
   const filteredOptions = useMemo(
     () => filterMatchOptions(allScoredOptions, filterPlayerIds),
     [allScoredOptions, filterPlayerIds],
   )
 
-  // Reset page and selection when filter or scored options change
-  useEffect(() => {
-    setPage(0)
-    setSelectedKey(null)
-  }, [filteredOptions])
-
-  const visibleOptions = filteredOptions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-  const canRegenerate = filteredOptions.length > PAGE_SIZE
-  const selectedOption = visibleOptions.find(o => o.key === selectedKey) ?? null
-
-  function handleRegenerate() {
-    const nextPage = (page + 1) * PAGE_SIZE < filteredOptions.length ? page + 1 : 0
-    setPage(nextPage)
-    setSelectedKey(null)
-  }
+  const optionPickerKey = `${filterPlayerIds.join(',')}|${allScoredOptions.map(o => o.key).join(',')}`
 
   function toggleFilter(id: string) {
     setFilterPlayerIds(prev =>
@@ -145,13 +198,13 @@ export function GenerateMatch() {
     )
   }
 
-  function handleSubmit() {
-    if (!courtId || !selectedOption) return
+  function handleSubmit(option: MatchOption) {
+    if (!courtId) return
     dispatch({
       type: 'ASSIGN_MATCH',
       courtId,
-      team1: selectedOption.team1,
-      team2: selectedOption.team2,
+      team1: option.team1,
+      team2: option.team2,
     })
     navigate('/match')
   }
@@ -256,49 +309,13 @@ export function GenerateMatch() {
         </div>
       )}
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {visibleOptions.length === 0 ? (
-          <p
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '14px',
-              color: '#9a9a9a',
-              textAlign: 'center',
-              marginTop: '24px',
-            }}
-          >
-            {allScoredOptions.length === 0
-              ? 'No match options available right now.'
-              : 'No options match this filter.'}
-          </p>
-        ) : (
-          visibleOptions.map(option => (
-            <MatchOptionCard
-              key={option.key}
-              option={option}
-              session={session}
-              selected={selectedKey === option.key}
-              onSelect={() => setSelectedKey(option.key)}
-            />
-          ))
-        )}
-      </div>
-
-      <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {canRegenerate && (
-          <Button variant="outline-pill" fullWidth onClick={handleRegenerate}>
-            ↻ Re-generate
-          </Button>
-        )}
-        <Button
-          variant="primary"
-          fullWidth
-          disabled={!selectedOption}
-          onClick={handleSubmit}
-        >
-          Submit
-        </Button>
-      </div>
+      <MatchOptionPicker
+        key={optionPickerKey}
+        filteredOptions={filteredOptions}
+        allScoredOptions={allScoredOptions}
+        session={session}
+        onSubmit={handleSubmit}
+      />
 
       <Modal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter by Player">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

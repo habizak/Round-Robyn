@@ -23,6 +23,33 @@ body {
   min-height: 100vh;
 }
 
+.setup-screen {
+  width: 100%;
+  max-width: 420px;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--color-bg);
+}
+
+.setup-screen__content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 24px 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.setup-screen__footer {
+  flex-shrink: 0;
+  padding: 16px 24px calc(16px + env(safe-area-inset-bottom));
+  background-color: var(--color-bg);
+}
+
 input::placeholder {
   color: var(--color-inactive);
 }

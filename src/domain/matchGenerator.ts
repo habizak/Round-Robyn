@@ -121,16 +121,110 @@ function generateFixedDoublesMatchups(players: Player[]): [string[], string[]][]
 
 // ─── Count player appearances in usedMatchups ─────────────────────────────────
 
+function idsFromMatchKey(key: string): string[] {
+  const parts = key.split('||')
+  if (parts.length !== 2) return []
+  return [...parts[0].split('|'), ...parts[1].split('|')].filter(Boolean)
+}
+
 function countPlayCounts(players: Player[], usedMatchups: Set<string>): Map<string, number> {
   const counts = new Map<string, number>()
   for (const p of players) counts.set(p.id, 0)
   for (const key of usedMatchups) {
-    const ids = key.split('|')
-    for (const id of ids) {
+    for (const id of idsFromMatchKey(key)) {
       if (counts.has(id)) counts.set(id, (counts.get(id) ?? 0) + 1)
     }
   }
   return counts
+}
+
+function estimatedByeCount(
+  playerId: string,
+  roundIndex: number,
+  playCounts: Map<string, number>,
+): number {
+  return roundIndex - (playCounts.get(playerId) ?? 0)
+}
+
+function rotationBenchOrder(
+  playerId: string,
+  allPlayerIds: string[],
+  roundIndex: number,
+): number {
+  const sorted = [...allPlayerIds].sort((a, b) => a.localeCompare(b))
+  const idx = sorted.indexOf(playerId)
+  if (idx === -1) return Number.MAX_SAFE_INTEGER
+  // Offset by one so tied rounds don't always bench the same first player twice in a row.
+  return (idx - ((roundIndex + 1) % sorted.length) + sorted.length) % sorted.length
+}
+
+function countByesInHistory(playerId: string, byeHistory: string[]): number {
+  return byeHistory.filter(id => id === playerId).length
+}
+
+function compareBenchPriority(
+  a: Player,
+  b: Player,
+  playCounts: Map<string, number>,
+  roundIndex: number,
+  allPlayerIds: string[],
+  byeHistory: string[],
+): number {
+  const playA = playCounts.get(a.id) ?? 0
+  const playB = playCounts.get(b.id) ?? 0
+  if (playB !== playA) return playB - playA
+  const histA = countByesInHistory(a.id, byeHistory)
+  const histB = countByesInHistory(b.id, byeHistory)
+  // Bench players who have sat out the least; those with more byes should play.
+  if (histA !== histB) return histA - histB
+  const byeA = estimatedByeCount(a.id, roundIndex, playCounts)
+  const byeB = estimatedByeCount(b.id, roundIndex, playCounts)
+  if (byeB !== byeA) return byeB - byeA
+  return (
+    rotationBenchOrder(a.id, allPlayerIds, roundIndex) -
+    rotationBenchOrder(b.id, allPlayerIds, roundIndex)
+  )
+}
+
+function pickPreferredBenchPlayers(
+  players: Player[],
+  playCounts: Map<string, number>,
+  roundIndex: number,
+  count: number,
+  byeHistory: string[],
+): Set<string> {
+  if (count <= 0) return new Set()
+  const allPlayerIds = players.map(p => p.id)
+  const sorted = [...players].sort((a, b) =>
+    compareBenchPriority(a, b, playCounts, roundIndex, allPlayerIds, byeHistory),
+  )
+  return new Set(sorted.slice(0, count).map(p => p.id))
+}
+
+function matchupsExcludingBenchPlayers(
+  matchups: [string[], string[]][],
+  benchIds: Set<string>,
+): [string[], string[]][] {
+  if (benchIds.size === 0) return matchups
+  return matchups.filter(([t1, t2]) => {
+    const playing = new Set([...t1, ...t2])
+    return [...benchIds].every(id => !playing.has(id))
+  })
+}
+
+function rankMatchupsForSelection(
+  matchups: [string[], string[]][],
+  usedMatchups: Set<string>,
+  playCounts: Map<string, number>,
+): [string[], string[]][] {
+  return [...matchups].sort((a, b) => {
+    const freshA = usedMatchups.has(getMatchKey(a[0], a[1])) ? 0 : 1
+    const freshB = usedMatchups.has(getMatchKey(b[0], b[1])) ? 0 : 1
+    if (freshB !== freshA) return freshB - freshA
+    const sumA = [...a[0], ...a[1]].reduce((s, id) => s + (playCounts.get(id) ?? 0), 0)
+    const sumB = [...b[0], ...b[1]].reduce((s, id) => s + (playCounts.get(id) ?? 0), 0)
+    return sumA - sumB
+  })
 }
 
 // ─── generateRound (4-arg version for tests) ─────────────────────────────────
@@ -144,8 +238,9 @@ export function generateRound(
   players: Player[],
   courts: Court[],
   matchType: MatchType,
-  usedMatchups: Set<string>
-): { matches: Match[]; benched: Player[] }
+  usedMatchups: Set<string>,
+  byeHistory?: string[]
+): { matches: Match[]; benched: Player[]; updatedByeHistory: string[] }
 
 /**
  * Full internal version with bye history and round tracking.
@@ -168,17 +263,18 @@ export function generateRound(
   byeHistory?: string[],
   currentRound?: number,
   currentMatchNumber?: number
-): { matches: Match[]; benched: Player[] } | { matches: Match[]; benched: string[]; updatedByeHistory: string[] } {
-  const isSimpleCall = byeHistory === undefined
+): { matches: Match[]; benched: Player[]; updatedByeHistory: string[] } | { matches: Match[]; benched: string[]; updatedByeHistory: string[] } {
+  const isSimpleCall = currentRound === undefined
+  const history = byeHistory ?? []
 
   // Determine which courts to use
   const availableCourts = courts.filter(c => c.status === 'empty')
 
   if (availableCourts.length === 0) {
     if (isSimpleCall) {
-      return { matches: [], benched: [...players] }
+      return { matches: [], benched: [...players], updatedByeHistory: history }
     }
-    return { matches: [], benched: players.map(p => p.id), updatedByeHistory: byeHistory! }
+    return { matches: [], benched: players.map(p => p.id), updatedByeHistory: history }
   }
 
   // For fair bye rotation in the simple API, determine preferred sitting-out order
@@ -212,36 +308,36 @@ export function generateRound(
 
   if (candidateMatchups.length === 0) {
     if (isSimpleCall) {
-      return { matches: [], benched: [...players] }
+      return { matches: [], benched: [...players], updatedByeHistory: history }
     }
-    return { matches: [], benched: players.map(p => p.id), updatedByeHistory: byeHistory! }
+    return { matches: [], benched: players.map(p => p.id), updatedByeHistory: history }
   }
 
-  // Shuffle for variety, then sort ascending by sum of participant play counts
-  // so under-played players get priority without losing variety within equal groups.
-  const shuffled = shuffle(candidateMatchups).sort((a, b) => {
-    const sumA = [...a[0], ...a[1]].reduce((s, id) => s + (playCounts.get(id) ?? 0), 0)
-    const sumB = [...b[0], ...b[1]].reduce((s, id) => s + (playCounts.get(id) ?? 0), 0)
-    return sumA - sumB
-  })
+  const playersPerMatch = matchType === 'singles' ? 2 : 4
+  const maxPlaying = availableCourts.length * playersPerMatch
+  const benchCount = Math.max(0, players.length - maxPlaying)
+  const roundIndex = usedMatchups.size
+  const benchIds = pickPreferredBenchPlayers(
+    players,
+    playCounts,
+    roundIndex,
+    benchCount,
+    history,
+  )
 
-  // When byeHistory is available, re-sort by bye count of EXCLUDED players ascending —
-  // this directly ensures the least-benched player(s) take the next bye slot.
-  if (byeHistory !== undefined) {
-    const byeCounts = new Map<string, number>()
-    for (const p of players) byeCounts.set(p.id, 0)
-    for (const id of byeHistory) {
-      byeCounts.set(id, (byeCounts.get(id) ?? 0) + 1)
-    }
+  let pool = matchupsExcludingBenchPlayers(candidateMatchups, benchIds)
+  if (pool.length === 0 && benchIds.size > 0) {
     const allPlayerIds = players.map(p => p.id)
-    shuffled.sort((a, b) => {
-      const playingA = new Set([...a[0], ...a[1]])
-      const playingB = new Set([...b[0], ...b[1]])
-      const sumA = allPlayerIds.filter(id => !playingA.has(id)).reduce((s, id) => s + (byeCounts.get(id) ?? 0), 0)
-      const sumB = allPlayerIds.filter(id => !playingB.has(id)).reduce((s, id) => s + (byeCounts.get(id) ?? 0), 0)
-      return sumA - sumB
-    })
+    for (const player of [...players].sort((a, b) =>
+      compareBenchPriority(a, b, playCounts, roundIndex, allPlayerIds, history),
+    )) {
+      pool = matchupsExcludingBenchPlayers(candidateMatchups, new Set([player.id]))
+      if (pool.length > 0) break
+    }
   }
+  if (pool.length === 0) pool = candidateMatchups
+
+  const rankedMatchups = rankMatchupsForSelection(pool, usedMatchups, playCounts)
 
   // Greedily assign matchups to courts.
   // Primary pass: no player reuse (ideal).
@@ -250,10 +346,11 @@ export function generateRound(
   const usedPlayerIds = new Set<string>()
   let matchNum = currentMatchNumber ?? 0
   const remainingCourts: Court[] = []
+  const remainingMatchups = [...rankedMatchups]
 
   for (const court of availableCourts) {
-    if (shuffled.length === 0) break
-    const idx = shuffled.findIndex(([t1, t2]) => {
+    if (remainingMatchups.length === 0) break
+    const idx = remainingMatchups.findIndex(([t1, t2]) => {
       const allP = [...t1, ...t2]
       return allP.every(id => !usedPlayerIds.has(id))
     })
@@ -261,7 +358,7 @@ export function generateRound(
       remainingCourts.push(court)
       continue
     }
-    const [team1, team2] = shuffled.splice(idx, 1)[0]
+    const [team1, team2] = remainingMatchups.splice(idx, 1)[0]
     ;[...team1, ...team2].forEach(id => usedPlayerIds.add(id))
     matches.push({
       id: crypto.randomUUID(),
@@ -278,20 +375,13 @@ export function generateRound(
   // fairness and never assign the same match key twice in a round.
   if (remainingCourts.length > 0 && (freshMatchups.length > 0 || allMatchups.length > 0)) {
     const pool = freshMatchups.length > 0 ? freshMatchups : allMatchups
-    // Sort pool by total play-count of participants ascending (least-played first)
-    const sortedPool = [...pool].sort((a, b) => {
-      const sumA = [...a[0], ...a[1]].reduce((s, id) => s + (playCounts.get(id) ?? 0), 0)
-      const sumB = [...b[0], ...b[1]].reduce((s, id) => s + (playCounts.get(id) ?? 0), 0)
-      return sumA - sumB
-    })
+    const sortedPool = rankMatchupsForSelection(pool, usedMatchups, playCounts)
     const assignedMatchKeys = new Set(matches.map(m => getMatchKey(m.team1, m.team2)))
 
     for (const court of remainingCourts) {
       const idx = sortedPool.findIndex(([t1, t2]) => {
         const key = getMatchKey(t1, t2)
-        if (assignedMatchKeys.has(key)) return false
-        const allP = [...t1, ...t2]
-        return allP.every(id => !usedPlayerIds.has(id))
+        return !assignedMatchKeys.has(key)
       })
       if (idx === -1) break
       const [team1, team2] = sortedPool.splice(idx, 1)[0]
@@ -312,14 +402,14 @@ export function generateRound(
   // Determine benched players (those not in any match)
   const playingIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]))
 
+  const benchedPlayers = players.filter(p => !playingIds.has(p.id))
+  const updatedByeHistory = [...history, ...benchedPlayers.map(p => p.id)]
+
   if (isSimpleCall) {
-    const benched = players.filter(p => !playingIds.has(p.id))
-    return { matches, benched }
+    return { matches, benched: benchedPlayers, updatedByeHistory }
   }
 
-  // Legacy path: return string ids and updatedByeHistory
-  const benchedIds = players.map(p => p.id).filter(id => !playingIds.has(id))
-  const updatedByeHistory = [...byeHistory!, ...benchedIds]
+  const benchedIds = benchedPlayers.map(p => p.id)
   return { matches, benched: benchedIds, updatedByeHistory }
 }
 
@@ -339,12 +429,6 @@ function generateMatchupsForType(players: Player[], matchType: MatchType): [stri
   if (matchType === 'singles') return generateSinglesMatchups(players)
   if (matchType === 'random-doubles') return generateRandomDoublesMatchups(players)
   return generateFixedDoublesMatchups(players)
-}
-
-function idsFromMatchKey(key: string): string[] {
-  const parts = key.split('||')
-  if (parts.length !== 2) return []
-  return [...parts[0].split('|'), ...parts[1].split('|')].filter(Boolean)
 }
 
 function countPlayCountsFromKeys(players: Player[], usedMatchups: Set<string>): Map<string, number> {
@@ -421,11 +505,13 @@ export function getMatchOptions(
 
 export function filterMatchOptions(
   options: MatchOption[],
-  playerIds: string[],
+  playerIds: string[] | string | null,
 ): MatchOption[] {
-  if (playerIds.length === 0) return options
+  if (playerIds == null) return options
+  const ids = Array.isArray(playerIds) ? playerIds : [playerIds]
+  if (ids.length === 0) return options
   return options.filter(o =>
-    playerIds.every(id => o.team1.includes(id) || o.team2.includes(id))
+    ids.every(id => o.team1.includes(id) || o.team2.includes(id))
   )
 }
 

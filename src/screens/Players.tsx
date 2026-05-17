@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSession } from '../hooks/useSession'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
+import { SetupScreenLayout } from '../components/SetupScreenLayout'
 import { MAX_PLAYERS, MIN_PLAYERS_SINGLES, MIN_PLAYERS_DOUBLES } from '../domain/constants'
 import type { Player } from '../types'
 
@@ -87,20 +88,37 @@ export function Players() {
   const reversedPlayers = [...players].reverse()
 
   return (
-    <div
-      style={{
-        maxWidth: '420px',
-        margin: '0 auto',
-        padding: '24px',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
+    <SetupScreenLayout
+      backButton={(
+        <button style={backNavStyle} onClick={() => navigate('/setup/match-type')}>
+          ‹ Match Type
+        </button>
+      )}
+      footer={(
+        <>
+          {navError && (
+            <p
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '12px',
+                color: 'var(--color-error)',
+                marginBottom: '12px',
+              }}
+            >
+              {navError}
+            </p>
+          )}
+          <Button
+            variant="primary"
+            fullWidth
+            disabled={players.length < minPlayers}
+            onClick={handleNext}
+          >
+            Winning Point ›
+          </Button>
+        </>
+      )}
     >
-      <button style={backNavStyle} onClick={() => navigate('/setup/match-type')}>
-        ‹ Match Type
-      </button>
-
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
@@ -258,30 +276,7 @@ export function Players() {
         </div>
       )}
 
-      {navError && (
-        <p
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '12px',
-            color: 'var(--color-error)',
-            marginTop: '12px',
-          }}
-        >
-          {navError}
-        </p>
-      )}
-
-      <div style={{ marginTop: '24px' }}>
-        <Button
-          variant="primary"
-          fullWidth
-          disabled={players.length < minPlayers}
-          onClick={handleNext}
-        >
-          Winning Point ›
-        </Button>
-      </div>
-    </div>
+    </SetupScreenLayout>
   )
 }
 
