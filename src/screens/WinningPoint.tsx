@@ -5,6 +5,20 @@ import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { DEFAULT_WINNING_POINTS } from '../domain/constants'
 
+const backNavStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '13px',
+  color: '#3c3c3c',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '4px',
+  padding: '0',
+  marginBottom: '16px',
+}
+
 export function WinningPoint() {
   const { session, dispatch } = useSession()
   const navigate = useNavigate()
@@ -65,59 +79,67 @@ export function WinningPoint() {
         flexDirection: 'column',
       }}
     >
-      <div style={{ marginBottom: '24px' }}>
-        <Button variant="ghost" onClick={() => navigate('/setup/players')}>
-          ← Players
-        </Button>
-      </div>
+      <button style={backNavStyle} onClick={() => navigate('/setup/players')}>
+        ‹ Players
+      </button>
 
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '24px',
+          fontSize: '32px',
           fontWeight: 700,
-          color: 'var(--color-text-primary)',
+          color: '#3c3c3c',
           marginBottom: '24px',
         }}
       >
         Winning Point
       </h1>
 
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-        {DEFAULT_WINNING_POINTS.map(pts => (
-          <button
-            key={pts}
-            onClick={() => handleQuickSelect(pts)}
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '14px',
-              fontWeight: 700,
-              padding: '12px 20px',
-              borderRadius: 0,
-              cursor: 'pointer',
-              backgroundColor: selected === pts && !showCustom ? 'var(--color-accent)' : 'transparent',
-              color: selected === pts && !showCustom ? 'var(--color-reverse)' : 'var(--color-text-primary)',
-              border: `1px solid ${selected === pts && !showCustom ? 'var(--color-accent)' : 'var(--color-border)'}`,
-            }}
-          >
-            {pts}
-          </button>
-        ))}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(5, 1fr)',
+          gap: '8px',
+          marginBottom: '16px',
+        }}
+      >
+        {DEFAULT_WINNING_POINTS.map(pts => {
+          const isSelected = selected === pts && !showCustom
+          return (
+            <button
+              key={pts}
+              onClick={() => handleQuickSelect(pts)}
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '16px',
+                fontWeight: 600,
+                aspectRatio: '1',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                backgroundColor: isSelected ? '#A4C92C' : 'white',
+                color: isSelected ? 'white' : '#3c3c3c',
+                border: isSelected ? '2px solid #A4C92C' : '1.5px solid #dcdcdc',
+              }}
+            >
+              {pts}
+            </button>
+          )
+        })}
         <button
           onClick={handleCustomToggle}
           style={{
             fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '14px',
-            fontWeight: 700,
-            padding: '12px 20px',
-            borderRadius: 0,
+            fontSize: '16px',
+            fontWeight: 600,
+            aspectRatio: '1',
+            borderRadius: '12px',
             cursor: 'pointer',
-            backgroundColor: showCustom ? 'var(--color-accent)' : 'transparent',
-            color: showCustom ? 'var(--color-reverse)' : 'var(--color-text-primary)',
-            border: `1px solid ${showCustom ? 'var(--color-accent)' : 'var(--color-border)'}`,
+            backgroundColor: showCustom ? '#A4C92C' : 'white',
+            color: showCustom ? 'white' : '#3c3c3c',
+            border: showCustom ? '2px solid #A4C92C' : '1.5px solid #dcdcdc',
           }}
         >
-          ···
+          ...
         </button>
       </div>
 
@@ -137,9 +159,9 @@ export function WinningPoint() {
         </div>
       )}
 
-      <div style={{ marginTop: 'auto' }}>
-        <Button variant="primary" fullWidth disabled={!isValid} onClick={handleNext}>
-          Court →
+      <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end' }}>
+        <Button variant="primary" disabled={!isValid} onClick={handleNext}>
+          Court ›
         </Button>
       </div>
     </div>

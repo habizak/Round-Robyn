@@ -5,6 +5,20 @@ import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { MAX_COURTS } from '../domain/constants'
 
+const backNavStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '13px',
+  color: '#3c3c3c',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '4px',
+  padding: '0',
+  marginBottom: '16px',
+}
+
 export function Court() {
   const { session, dispatch } = useSession()
   const navigate = useNavigate()
@@ -43,6 +57,9 @@ export function Court() {
     navigate('/match')
   }
 
+  // Reversed for display (newest at top)
+  const reversedCourts = [...courts].reverse()
+
   return (
     <div
       style={{
@@ -54,95 +71,88 @@ export function Court() {
         flexDirection: 'column',
       }}
     >
-      <div style={{ marginBottom: '24px' }}>
-        <Button variant="ghost" onClick={() => navigate('/setup/winning-point')}>
-          ← Winning Point
-        </Button>
-      </div>
+      <button style={backNavStyle} onClick={() => navigate('/setup/winning-point')}>
+        ‹ Winning Point
+      </button>
 
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '24px',
+          fontSize: '32px',
           fontWeight: 700,
-          color: 'var(--color-text-primary)',
-          marginBottom: '8px',
+          color: '#3c3c3c',
+          marginBottom: '24px',
         }}
       >
         Court
       </h1>
-      <p
-        style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '12px',
-          color: 'var(--color-text-secondary)',
-          marginBottom: '24px',
-        }}
-      >
-        {courts.length}/{MAX_COURTS} courts added
-      </p>
 
-      <div style={{ marginBottom: '16px', display: 'flex', gap: '8px' }}>
-        <div style={{ flex: 1 }}>
-          <Input
-            value={inputValue}
-            onChange={v => {
-              setInputValue(v)
-              setInputError('')
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="Court name"
-            error={inputError}
-          />
-        </div>
-        <div>
-          <Button
-            variant="secondary"
-            onClick={handleAdd}
-            disabled={courts.length >= MAX_COURTS}
-          >
-            Add
-          </Button>
-        </div>
+      <div style={{ marginBottom: '24px' }}>
+        <Input
+          value={inputValue}
+          onChange={v => {
+            setInputValue(v)
+            setInputError('')
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder="Name"
+          error={inputError}
+          helper={`You may key in a maximum of ${MAX_COURTS} courts`}
+        />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-        {courts.map((c, i) => (
-          <div
-            key={c.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '8px 12px',
-              border: '1px solid var(--color-border)',
-            }}
-          >
-            <span
+      <div
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '20px',
+          fontWeight: 700,
+          color: '#3c3c3c',
+          marginBottom: '8px',
+        }}
+      >
+        Court List
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+        {reversedCourts.map((c, i) => {
+          const displayIndex = courts.length - i
+          return (
+            <div
+              key={c.id}
               style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '14px',
-                color: 'var(--color-text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 0',
+                borderBottom: '1px solid #f0f0f0',
               }}
             >
-              {i + 1}. {c.name}
-            </span>
-            <button
-              onClick={() => handleRemove(c.id)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--color-text-secondary)',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '16px',
-                padding: '0 4px',
-              }}
-            >
-              ×
-            </button>
-          </div>
-        ))}
+              <span
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '16px',
+                  color: '#3c3c3c',
+                }}
+              >
+                {displayIndex}. {c.name}
+              </span>
+              <button
+                onClick={() => handleRemove(c.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#9a9a9a',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '18px',
+                  padding: '0 4px',
+                }}
+              >
+                ×
+              </button>
+            </div>
+          )
+        })}
       </div>
 
       <div style={{ marginTop: '24px' }}>

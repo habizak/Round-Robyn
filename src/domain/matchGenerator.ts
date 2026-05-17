@@ -251,16 +251,34 @@ export function generateRound(
     })
   }
 
-  // Fallback: fill remaining courts even if players are reused
+  // Fallback: fill remaining courts allowing player reuse, but still respect play-count
+  // fairness and never assign the same match key twice in a round.
   if (remainingCourts.length > 0 && (freshMatchups.length > 0 || allMatchups.length > 0)) {
-    const fallbackPool = shuffle(freshMatchups.length > 0 ? freshMatchups : allMatchups)
+    const pool = freshMatchups.length > 0 ? freshMatchups : allMatchups
+    // Sort pool by total play-count of participants ascending (least-played first)
+    const sortedPool = [...pool].sort((a, b) => {
+      const sumA = [...a[0], ...a[1]].reduce((s, id) => s + (playCounts.get(id) ?? 0), 0)
+      const sumB = [...b[0], ...b[1]].reduce((s, id) => s + (playCounts.get(id) ?? 0), 0)
+      return sumA - sumB
+    })
     const assignedMatchKeys = new Set(matches.map(m => getMatchKey(m.team1, m.team2)))
 
     for (const court of remainingCourts) {
-      const idx = fallbackPool.findIndex(([t1, t2]) => !assignedMatchKeys.has(getMatchKey(t1, t2)))
-      if (idx === -1) break
-      const [team1, team2] = fallbackPool.splice(idx, 1)[0]
+      // Prefer matchups whose players are not already playing this round
+      const idx = sortedPool.findIndex(([t1, t2]) => {
+        const key = getMatchKey(t1, t2)
+        if (assignedMatchKeys.has(key)) return false
+        const allP = [...t1, ...t2]
+        return allP.every(id => !usedPlayerIds.has(id))
+      })
+      // If no non-overlapping matchup exists, allow player reuse (same 4 players, new key)
+      const fallbackIdx = idx !== -1 ? idx : sortedPool.findIndex(
+        ([t1, t2]) => !assignedMatchKeys.has(getMatchKey(t1, t2))
+      )
+      if (fallbackIdx === -1) break
+      const [team1, team2] = sortedPool.splice(fallbackIdx, 1)[0]
       assignedMatchKeys.add(getMatchKey(team1, team2))
+      ;[...team1, ...team2].forEach(id => usedPlayerIds.add(id))
       matches.push({
         id: crypto.randomUUID(),
         courtId: court.id,

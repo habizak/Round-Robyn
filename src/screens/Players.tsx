@@ -6,6 +6,20 @@ import { Input } from '../components/Input'
 import { MAX_PLAYERS, MIN_PLAYERS_SINGLES, MIN_PLAYERS_DOUBLES } from '../domain/constants'
 import type { Player } from '../types'
 
+const backNavStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '13px',
+  color: '#3c3c3c',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '4px',
+  padding: '0',
+  marginBottom: '16px',
+}
+
 export function Players() {
   const { session, dispatch } = useSession()
   const navigate = useNavigate()
@@ -47,8 +61,8 @@ export function Players() {
       setNavError(`At least ${minPlayers} players required.`)
       return
     }
-    if (isFixedDoubles && players.length % 2 !== 0) {
-      setNavError('Need an even number of players for fixed doubles.')
+    if (isDoubles && players.length % 2 !== 0) {
+      setNavError('Need an even number of players for doubles.')
       return
     }
     if (isFixedDoubles) {
@@ -69,6 +83,9 @@ export function Players() {
   const unpaired = players.filter(p => !p.partnerId)
   const paired = getPairs(players)
 
+  // Show list in reverse order (newest at top)
+  const reversedPlayers = [...players].reverse()
+
   return (
     <div
       style={{
@@ -80,95 +97,88 @@ export function Players() {
         flexDirection: 'column',
       }}
     >
-      <div style={{ marginBottom: '24px' }}>
-        <Button variant="ghost" onClick={() => navigate('/setup/match-type')}>
-          ← Match Type
-        </Button>
-      </div>
+      <button style={backNavStyle} onClick={() => navigate('/setup/match-type')}>
+        ‹ Match Type
+      </button>
 
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '24px',
+          fontSize: '32px',
           fontWeight: 700,
-          color: 'var(--color-text-primary)',
-          marginBottom: '8px',
+          color: '#3c3c3c',
+          marginBottom: '24px',
         }}
       >
         Players
       </h1>
-      <p
-        style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '12px',
-          color: 'var(--color-text-secondary)',
-          marginBottom: '24px',
-        }}
-      >
-        {players.length}/{MAX_PLAYERS} players added
-      </p>
 
-      <div style={{ marginBottom: '16px', display: 'flex', gap: '8px' }}>
-        <div style={{ flex: 1 }}>
-          <Input
-            value={inputValue}
-            onChange={v => {
-              setInputValue(v)
-              setInputError('')
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="Player name"
-            error={inputError}
-          />
-        </div>
-        <div>
-          <Button
-            variant="secondary"
-            onClick={handleAdd}
-            disabled={players.length >= MAX_PLAYERS}
-          >
-            Add
-          </Button>
-        </div>
+      <div style={{ marginBottom: '24px' }}>
+        <Input
+          value={inputValue}
+          onChange={v => {
+            setInputValue(v)
+            setInputError('')
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder="Name"
+          error={inputError}
+          helper={`You may key in a maximum of ${MAX_PLAYERS} players`}
+        />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-        {players.map((p, i) => (
-          <div
-            key={p.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '8px 12px',
-              border: '1px solid var(--color-border)',
-            }}
-          >
-            <span
+      <div
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '20px',
+          fontWeight: 700,
+          color: '#3c3c3c',
+          marginBottom: '8px',
+        }}
+      >
+        Player List
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+        {reversedPlayers.map((p, i) => {
+          const displayIndex = players.length - i
+          return (
+            <div
+              key={p.id}
               style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '14px',
-                color: 'var(--color-text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 0',
+                borderBottom: '1px solid #f0f0f0',
               }}
             >
-              {i + 1}. {p.name}
-            </span>
-            <button
-              onClick={() => handleRemove(p.id)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--color-text-secondary)',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '16px',
-                padding: '0 4px',
-              }}
-            >
-              ×
-            </button>
-          </div>
-        ))}
+              <span
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '16px',
+                  color: '#3c3c3c',
+                }}
+              >
+                {displayIndex}. {p.name}
+              </span>
+              <button
+                onClick={() => handleRemove(p.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#9a9a9a',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '18px',
+                  padding: '0 4px',
+                }}
+              >
+                ×
+              </button>
+            </div>
+          )
+        })}
       </div>
 
       {/* Fixed doubles pairing UI */}
@@ -179,7 +189,7 @@ export function Players() {
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: '14px',
               fontWeight: 700,
-              color: 'var(--color-text-primary)',
+              color: '#3c3c3c',
               marginBottom: '12px',
             }}
           >
@@ -197,11 +207,13 @@ export function Players() {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '8px 12px',
-                    border: '1px solid var(--color-accent)',
+                    backgroundColor: 'var(--color-surface)',
+                    border: '1.5px solid #A4C92C',
+                    borderRadius: '12px',
                     marginBottom: '4px',
                     fontFamily: "'JetBrains Mono', monospace",
                     fontSize: '13px',
-                    color: 'var(--color-text-primary)',
+                    color: '#3c3c3c',
                   }}
                 >
                   <span>
@@ -210,15 +222,13 @@ export function Players() {
                   <button
                     onClick={() => {
                       dispatch({ type: 'SET_PARTNER', playerId: p1.id, partnerId: '' })
-                      // Remove partner from both by setting to empty string
-                      // We'll handle this in reducer by clearing
                     }}
                     style={{
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
-                      color: 'var(--color-text-secondary)',
-                      fontFamily: "'JetBrains Mono', monospace',",
+                      color: '#9a9a9a',
+                      fontFamily: "'JetBrains Mono', monospace",
                       fontSize: '12px',
                     }}
                   >
@@ -261,14 +271,13 @@ export function Players() {
         </p>
       )}
 
-      <div style={{ marginTop: '24px' }}>
+      <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
         <Button
           variant="primary"
-          fullWidth
           disabled={players.length < minPlayers}
           onClick={handleNext}
         >
-          Winning Point →
+          Winning Point ›
         </Button>
       </div>
     </div>
@@ -312,7 +321,9 @@ function PairingForm({
     <div
       style={{
         padding: '12px',
-        border: '1px dashed var(--color-border)',
+        border: '2px dashed #A4C92C',
+        borderRadius: '12px',
+        backgroundColor: 'var(--color-bg)',
         marginBottom: '8px',
       }}
     >
@@ -320,7 +331,7 @@ function PairingForm({
         style={{
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: '12px',
-          color: 'var(--color-text-secondary)',
+          color: '#9a9a9a',
           marginBottom: '8px',
         }}
       >
@@ -336,9 +347,9 @@ function PairingForm({
             fontSize: '13px',
             padding: '6px 8px',
             backgroundColor: 'var(--color-bg)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 0,
-            color: 'var(--color-text-primary)',
+            border: '1.5px solid var(--color-border)',
+            borderRadius: '12px',
+            color: '#3c3c3c',
           }}
         >
           <option value="">Player 1</option>
@@ -357,9 +368,9 @@ function PairingForm({
             fontSize: '13px',
             padding: '6px 8px',
             backgroundColor: 'var(--color-bg)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 0,
-            color: 'var(--color-text-primary)',
+            border: '1.5px solid var(--color-border)',
+            borderRadius: '12px',
+            color: '#3c3c3c',
           }}
         >
           <option value="">Player 2</option>
@@ -375,7 +386,7 @@ function PairingForm({
         onClick={handlePair}
         disabled={!p1 || !p2 || p1 === p2}
       >
-        Pair →
+        Pair ›
       </Button>
     </div>
   )

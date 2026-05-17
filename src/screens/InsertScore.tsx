@@ -4,6 +4,20 @@ import { useSession, getPlayerName } from '../hooks/useSession'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 
+const backNavStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '13px',
+  color: '#3c3c3c',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '4px',
+  padding: '0',
+  marginBottom: '16px',
+}
+
 export function InsertScore() {
   const { matchId } = useParams<{ matchId: string }>()
   const { session, dispatch } = useSession()
@@ -63,123 +77,78 @@ export function InsertScore() {
         flexDirection: 'column',
       }}
     >
-      <div style={{ marginBottom: '24px' }}>
-        <Button
-          variant="ghost"
-          onClick={() => navigate(`/match/score/${matchId}/winner`)}
-        >
-          ← Back
-        </Button>
-      </div>
+      <button style={backNavStyle} onClick={() => navigate(`/match/score/${matchId}/winner`)}>
+        ‹ Back
+      </button>
 
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '24px',
+          fontSize: '32px',
           fontWeight: 700,
-          color: 'var(--color-text-primary)',
+          color: '#3c3c3c',
           marginBottom: '24px',
         }}
       >
         Insert Score
       </h1>
 
-      <div
-        style={{
-          padding: '16px',
-          border: '1px solid var(--color-border)',
-          marginBottom: '24px',
-        }}
-      >
-        <div
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '11px',
-            color: 'var(--color-text-secondary)',
-            marginBottom: '8px',
-          }}
-        >
-          Match #{match.matchNumber}
-        </div>
-        <div style={{ marginBottom: '4px' }}>
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '11px',
-              color: 'var(--color-text-secondary)',
-              marginRight: '8px',
-            }}
-          >
-            Winner:
-          </span>
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '14px',
-              fontWeight: 700,
-              color: 'var(--color-accent)',
-            }}
-          >
-            {winnerNames}
-          </span>
-        </div>
-        <div>
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '11px',
-              color: 'var(--color-text-secondary)',
-              marginRight: '8px',
-            }}
-          >
-            Loser:
-          </span>
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '14px',
-              color: 'var(--color-text-primary)',
-            }}
-          >
-            {loserNames}
-          </span>
-        </div>
-      </div>
-
       <div style={{ marginBottom: '24px' }}>
         <Input
-          label={`${loserNames}'s score`}
           type="number"
           value={loserScore}
           onChange={v => {
             setLoserScore(v)
             setError('')
           }}
-          placeholder="e.g. 15"
+          placeholder="Score"
           error={error}
         />
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: 'auto' }}>
+      {/* Team section */}
+      <div style={{ marginBottom: '24px' }}>
+        <div
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '14px',
+            fontWeight: 700,
+            color: '#3c3c3c',
+            marginBottom: '8px',
+          }}
+        >
+          Winner: {winnerNames}
+        </div>
+        <div
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '14px',
+            color: '#9a9a9a',
+          }}
+        >
+          Loser: {loserNames}
+        </div>
         <div
           style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: '13px',
-            color: 'var(--color-text-secondary)',
+            color: '#9a9a9a',
+            marginTop: '8px',
           }}
         >
-          {session.winningPoint} – {loserScore || '?'}
+          Score: {session.winningPoint} – {loserScore || '?'}
         </div>
-        <div style={{ flex: 1 }}>
-          <Button
-            variant="primary"
-            fullWidth
-            disabled={!loserScore}
-            onClick={handleSubmit}
-          >
-            Submit
-          </Button>
-        </div>
+      </div>
+
+      <div style={{ marginTop: 'auto' }}>
+        <Button
+          variant="primary"
+          fullWidth
+          disabled={!loserScore}
+          onClick={handleSubmit}
+        >
+          Submit
+        </Button>
       </div>
     </div>
   )

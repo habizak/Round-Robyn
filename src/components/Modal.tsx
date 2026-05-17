@@ -24,7 +24,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(26,26,24,0.5)',
+        backgroundColor: 'rgba(60,60,60,0.5)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -38,8 +38,8 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       <div
         style={{
           backgroundColor: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 0,
+          border: '1.5px solid var(--color-border)',
+          borderRadius: '12px',
           maxWidth: '480px',
           width: '100%',
           padding: '24px',

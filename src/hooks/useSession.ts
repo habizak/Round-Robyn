@@ -22,7 +22,7 @@ type Action =
   | { type: 'ADD_COURT'; name: string }
   | { type: 'REMOVE_COURT'; id: string }
   | { type: 'START_SESSION' }
-  | { type: 'COMPLETE_MATCH'; matchId: string; score: Score }
+  | { type: 'COMPLETE_MATCH'; matchId: string; score?: Score }
   | { type: 'GENERATE_NEXT_MATCH'; courtId: string }
   | { type: 'ASSIGN_MATCH'; courtId: string; team1: string[]; team2: string[] }
   | { type: 'END_SESSION' }

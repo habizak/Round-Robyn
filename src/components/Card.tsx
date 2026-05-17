@@ -4,33 +4,28 @@ type CardProps = {
   children: React.ReactNode
   dark?: boolean
   dashed?: boolean
+  /** @deprecated use dashed instead, kept for compat */
   dashedAccent?: boolean
   selected?: boolean
-  rounded?: boolean
   onClick?: () => void
+  padding?: number
+  /** @deprecated border-radius is always 12px, kept for compat */
+  rounded?: boolean
 }
 
-export function Card({ children, dark, dashed, dashedAccent, selected, rounded, onClick }: CardProps) {
+export function Card({ children, dark, dashed, dashedAccent, selected, onClick, padding = 16 }: CardProps) {
+  const isDashed = dashed || dashedAccent
+
   const style: React.CSSProperties = {
-    backgroundColor: dark
-      ? 'var(--color-card)'
-      : selected
-        ? 'var(--color-accent)'
-        : 'transparent',
-    color: dark
-      ? 'var(--color-reverse)'
-      : selected
-        ? 'var(--color-reverse)'
-        : 'var(--color-text-primary)',
+    backgroundColor: dark ? '#3c3c3c' : isDashed ? 'var(--color-bg)' : 'var(--color-surface)',
+    color: dark ? 'white' : 'var(--color-text-primary)',
     border: selected
-      ? `2px solid var(--color-accent)`
-      : dashedAccent
-      ? `1px dashed var(--color-accent)`
-      : dashed
-      ? `1px dashed var(--color-border)`
-      : `1px solid var(--color-border)`,
-    padding: '16px',
-    borderRadius: rounded ? 16 : 0,
+      ? '2px solid #A4C92C'
+      : isDashed
+      ? '2px dashed #A4C92C'
+      : '1.5px solid var(--color-border)',
+    borderRadius: '12px',
+    padding: `${padding}px`,
     cursor: onClick ? 'pointer' : undefined,
     width: '100%',
     boxSizing: 'border-box',

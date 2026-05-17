@@ -7,6 +7,7 @@ type InputProps = {
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
   placeholder?: string
   error?: string
+  helper?: string
   type?: string
 }
 
@@ -17,6 +18,7 @@ export function Input({
   onKeyDown,
   placeholder,
   error,
+  helper,
   type = 'text',
 }: InputProps) {
   const [focused, setFocused] = useState(false)
@@ -68,6 +70,17 @@ export function Input({
           }}
         >
           {error}
+        </span>
+      )}
+      {!error && helper && (
+        <span
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '12px',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          {helper}
         </span>
       )}
     </div>

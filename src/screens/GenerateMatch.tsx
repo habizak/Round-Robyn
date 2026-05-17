@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSession, getPlayerName } from '../hooks/useSession'
 import { Button } from '../components/Button'
 import { Modal } from '../components/Modal'
-import { Badge } from '../components/Badge'
 import {
   filterMatchOptions,
   generateMatchKey,
@@ -13,7 +12,19 @@ import {
 import { canGenerateOnCourt, getActivePlayerIds } from '../domain/sessionRules'
 import type { Session } from '../types'
 
-const pageFont = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
+const backNavStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '13px',
+  color: '#3c3c3c',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '4px',
+  padding: '0',
+  marginBottom: '16px',
+}
 
 function getUsedMatchups(matches: Session['matches']): Set<string> {
   const used = new Set<string>()
@@ -51,20 +62,20 @@ function MatchOptionCard({
         alignItems: 'center',
         gap: '12px',
         padding: '20px 16px',
-        borderRadius: 12,
-        border: `1px solid ${selected ? 'var(--color-accent)' : 'var(--color-text-primary)'}`,
-        background: selected ? 'var(--color-accent)' : 'var(--color-bg)',
-        color: selected ? 'var(--color-reverse)' : 'var(--color-text-primary)',
+        borderRadius: '12px',
+        border: selected ? '2px solid #A4C92C' : '1.5px solid #dcdcdc',
+        background: selected ? '#A4C92C' : 'var(--color-bg)',
+        color: selected ? 'white' : '#3c3c3c',
         cursor: 'pointer',
         textAlign: 'center',
-        fontFamily: pageFont,
-        fontSize: '15px',
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: '14px',
         fontWeight: 500,
         lineHeight: 1.35,
       }}
     >
       <span style={{ textAlign: 'right' }}>{formatSide(session, option.team1)}</span>
-      <span style={{ fontWeight: 700, fontSize: '14px' }}>VS</span>
+      <span style={{ fontWeight: 700, fontSize: '13px' }}>VS</span>
       <span style={{ textAlign: 'left' }}>{formatSide(session, option.team2)}</span>
     </button>
   )
@@ -128,77 +139,32 @@ export function GenerateMatch() {
       style={{
         maxWidth: '420px',
         margin: '0 auto',
-        padding: '16px 20px 32px',
+        padding: '24px',
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          marginBottom: '8px',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => navigate('/match')}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--color-text-primary)',
-            padding: '4px',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-          title="Settings"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path
-              d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-            <path
-              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.36.49.57 1.08.6 1.7.03.62-.14 1.23-.5 1.75-.36.52-.88.93-1.5 1.15Z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      </div>
+      <button style={backNavStyle} onClick={() => navigate('/match')}>
+        ‹ Back
+      </button>
 
       <h1
         style={{
-          fontFamily: pageFont,
+          fontFamily: "'JetBrains Mono', monospace",
           fontSize: '32px',
           fontWeight: 700,
-          color: 'var(--color-text-primary)',
-          margin: '0 0 16px',
-          lineHeight: 1.15,
+          color: '#3c3c3c',
+          marginBottom: '24px',
         }}
       >
         Generate Match
       </h1>
 
-      <div style={{ marginBottom: '20px' }}>
-        <Button variant="outline" pill onClick={() => setFilterModalOpen(true)}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path
-                d="M4 6h16M7 12h10M10 18h4"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-            Filter
-          </span>
+      <div style={{ marginBottom: '16px' }}>
+        <Button variant="outline-pill" size="sm" onClick={() => setFilterModalOpen(true)}>
+          = Filter
         </Button>
       </div>
 
@@ -211,7 +177,18 @@ export function GenerateMatch() {
             marginBottom: '12px',
           }}
         >
-          <Badge accent>{getPlayerName(session, filterPlayerId)}</Badge>
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '12px',
+              backgroundColor: '#A4C92C',
+              borderRadius: '9999px',
+              padding: '2px 10px',
+              color: 'white',
+            }}
+          >
+            {getPlayerName(session, filterPlayerId)}
+          </span>
           <button
             type="button"
             onClick={() => setFilterPlayerId(null)}
@@ -219,9 +196,9 @@ export function GenerateMatch() {
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: 'var(--color-text-secondary)',
-              fontFamily: pageFont,
-              fontSize: '13px',
+              color: '#9a9a9a',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '12px',
             }}
           >
             × clear
@@ -233,9 +210,9 @@ export function GenerateMatch() {
         {visibleOptions.length === 0 ? (
           <p
             style={{
-              fontFamily: pageFont,
+              fontFamily: "'JetBrains Mono', monospace",
               fontSize: '14px',
-              color: 'var(--color-text-secondary)',
+              color: '#9a9a9a',
               textAlign: 'center',
               marginTop: '24px',
             }}
@@ -260,7 +237,6 @@ export function GenerateMatch() {
       <div style={{ marginTop: '24px' }}>
         <Button
           variant="primary"
-          pill
           fullWidth
           disabled={!selectedOption}
           onClick={handleSubmit}
@@ -282,17 +258,13 @@ export function GenerateMatch() {
                   setFilterModalOpen(false)
                 }}
                 style={{
-                  fontFamily: pageFont,
+                  fontFamily: "'JetBrains Mono', monospace",
                   fontSize: '14px',
                   padding: '10px 12px',
-                  background:
-                    filterPlayerId === p.id ? 'var(--color-accent)' : 'var(--color-bg)',
-                  color:
-                    filterPlayerId === p.id
-                      ? 'var(--color-reverse)'
-                      : 'var(--color-text-primary)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 8,
+                  background: filterPlayerId === p.id ? '#A4C92C' : 'var(--color-bg)',
+                  color: filterPlayerId === p.id ? 'white' : '#3c3c3c',
+                  border: '1.5px solid var(--color-border)',
+                  borderRadius: '12px',
                   cursor: 'pointer',
                   textAlign: 'left',
                 }}
