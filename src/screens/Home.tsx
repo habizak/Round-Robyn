@@ -36,8 +36,8 @@ export function Home() {
       }}
     >
       <img
-        src="/logo_matcha.png"
-        alt="Matcha"
+        src="/logo_robyn.svg"
+        alt="Round-Robyn"
         style={{ width: '100px', height: '100px', objectFit: 'contain' }}
       />
 
@@ -51,7 +51,7 @@ export function Home() {
           marginTop: '16px',
         }}
       >
-        Matcha
+        /RND-Robyn
       </h1>
 
       <p

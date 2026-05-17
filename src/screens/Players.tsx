@@ -226,7 +226,7 @@ export function Players() {
                     justifyContent: 'space-between',
                     padding: '8px 12px',
                     backgroundColor: 'var(--color-surface)',
-                    border: '1.5px solid #A4C92C',
+                    border: '1.5px solid #FE680C',
                     borderRadius: '12px',
                     marginBottom: '4px',
                     fontFamily: "'JetBrains Mono', monospace",
@@ -317,7 +317,7 @@ function PairingForm({
     <div
       style={{
         padding: '12px',
-        border: '2px dashed #A4C92C',
+        border: '2px dashed #FE680C',
         borderRadius: '12px',
         backgroundColor: 'var(--color-bg)',
         marginBottom: '8px',

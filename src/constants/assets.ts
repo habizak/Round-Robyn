@@ -1,6 +1,6 @@
 /** Paths to static assets in /public (served from site root). */
 export const ASSETS = {
-  logoMatcha: '/logo_matcha.png',
+  logoRobyn: '/logo_robyn.svg',
   logoSingles: '/logo_match_single.png',
   iconDoubles: '/icon_match_doubles.png',
   iconCourt: '/icon_court.png',

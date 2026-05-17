@@ -43,7 +43,7 @@ export function Button({
 
   const variantStyles: Record<string, React.CSSProperties> = {
     primary: {
-      backgroundColor: '#A4C92C',
+      backgroundColor: '#FE680C',
       color: 'white',
       border: 'none',
     },

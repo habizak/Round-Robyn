@@ -115,9 +115,9 @@ export function WinningPoint() {
                 aspectRatio: '1',
                 borderRadius: '12px',
                 cursor: 'pointer',
-                backgroundColor: isSelected ? '#A4C92C' : 'white',
+                backgroundColor: isSelected ? '#FE680C' : 'white',
                 color: isSelected ? 'white' : '#3c3c3c',
-                border: isSelected ? '2px solid #A4C92C' : '1.5px solid #dcdcdc',
+                border: isSelected ? '2px solid #FE680C' : '1.5px solid #dcdcdc',
               }}
             >
               {pts}
@@ -133,9 +133,9 @@ export function WinningPoint() {
             aspectRatio: '1',
             borderRadius: '12px',
             cursor: 'pointer',
-            backgroundColor: showCustom ? '#A4C92C' : 'white',
+            backgroundColor: showCustom ? '#FE680C' : 'white',
             color: showCustom ? 'white' : '#3c3c3c',
-            border: showCustom ? '2px solid #A4C92C' : '1.5px solid #dcdcdc',
+            border: showCustom ? '2px solid #FE680C' : '1.5px solid #dcdcdc',
           }}
         >
           ...

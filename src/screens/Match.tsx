@@ -25,7 +25,6 @@ export function Match() {
   }
 
   const activeCourts = session.courts
-  const emptyCourts = activeCourts.filter(c => c.status === 'empty')
   const activeMatches = session.matches.filter(m => m.status === 'playing')
   const completedMatches = getCompletedMatches(session)
   const benchedPlayers = getBenchedPlayers(session)
@@ -153,7 +152,7 @@ export function Match() {
         </div>
         <div
           style={{
-            border: '2px dashed #A4C92C',
+            border: '2px dashed #FE680C',
             borderRadius: '12px',
             padding: '16px',
             backgroundColor: 'var(--color-bg)',
@@ -231,48 +230,6 @@ export function Match() {
 
       {tab === 'match' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          {/* Available Court section */}
-          {emptyCourts.length > 0 && (
-            <div style={{ marginBottom: '24px' }}>
-              <div
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '20px',
-                  fontWeight: 700,
-                  color: '#3c3c3c',
-                  marginBottom: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                <img src="/icon_available-court.png" alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />Available Court
-              </div>
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                {emptyCourts.map(court => (
-                  <div
-                    key={court.id}
-                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
-                  >
-                    <img
-                      src="/icon_court.png"
-                      alt={court.name}
-                      style={{ width: '56px', height: '56px', objectFit: 'contain' }}
-                    />
-                    <span
-                      style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: '12px',
-                        color: '#9a9a9a',
-                      }}
-                    >
-                      {court.name}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Courts section */}
           <div
@@ -363,7 +320,7 @@ export function Match() {
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
                   fontSize: '12px',
-                  backgroundColor: '#A4C92C',
+                  backgroundColor: '#FE680C',
                   borderRadius: '9999px',
                   padding: '2px 10px',
                   color: 'white',
@@ -551,7 +508,7 @@ export function Match() {
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: '14px',
                 padding: '10px 12px',
-                background: filterPlayerId === p.id ? '#A4C92C' : 'var(--color-bg)',
+                background: filterPlayerId === p.id ? '#FE680C' : 'var(--color-bg)',
                 color: filterPlayerId === p.id ? 'white' : '#3c3c3c',
                 border: '1.5px solid var(--color-border)',
                 borderRadius: '12px',

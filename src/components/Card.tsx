@@ -20,9 +20,9 @@ export function Card({ children, dark, dashed, dashedAccent, selected, onClick, 
     backgroundColor: dark ? '#3c3c3c' : isDashed ? 'var(--color-bg)' : 'var(--color-surface)',
     color: dark ? 'white' : 'var(--color-text-primary)',
     border: selected
-      ? '2px solid #A4C92C'
+      ? '2px solid #FE680C'
       : isDashed
-      ? '2px dashed #A4C92C'
+      ? '2px dashed #FE680C'
       : '1.5px solid var(--color-border)',
     borderRadius: '12px',
     padding: `${padding}px`,

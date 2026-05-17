@@ -7,8 +7,8 @@ type AppLogoProps = {
 export function AppLogo({ size = 120 }: AppLogoProps) {
   return (
     <img
-      src={ASSETS.logoMatcha}
-      alt="Matcha"
+      src={ASSETS.logoRobyn}
+      alt="Round-Robyn"
       width={size}
       style={{
         display: 'block',

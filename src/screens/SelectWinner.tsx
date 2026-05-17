@@ -55,7 +55,7 @@ export function SelectWinner() {
   function teamCardStyle(team: 'team1' | 'team2'): React.CSSProperties {
     const isSelected = selectedTeam === team
     return {
-      border: isSelected ? '2px solid #A4C92C' : '1.5px solid #dcdcdc',
+      border: isSelected ? '2px solid #FE680C' : '1.5px solid #dcdcdc',
       borderRadius: '12px',
       padding: '16px',
       cursor: 'pointer',
