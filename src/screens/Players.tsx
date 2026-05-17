@@ -271,9 +271,10 @@ export function Players() {
         </p>
       )}
 
-      <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginTop: '24px' }}>
         <Button
           variant="primary"
+          fullWidth
           disabled={players.length < minPlayers}
           onClick={handleNext}
         >

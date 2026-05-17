@@ -223,12 +223,18 @@ describe('filterMatchOptions', () => {
     { team1: ['p1', 'p5'], team2: ['p6', 'p7'], key: 'b' },
   ]
 
-  it('returns all options when filter is null', () => {
-    expect(filterMatchOptions(options, null)).toHaveLength(2)
+  it('returns all options when filter is empty', () => {
+    expect(filterMatchOptions(options, [])).toHaveLength(2)
   })
 
   it('filters to options that include the player', () => {
-    const filtered = filterMatchOptions(options, 'p5')
+    const filtered = filterMatchOptions(options, ['p5'])
+    expect(filtered).toHaveLength(1)
+    expect(filtered[0].key).toBe('b')
+  })
+
+  it('filters to options that include ALL selected players (AND logic)', () => {
+    const filtered = filterMatchOptions(options, ['p1', 'p5'])
     expect(filtered).toHaveLength(1)
     expect(filtered[0].key).toBe('b')
   })
@@ -242,7 +248,7 @@ describe('generateRound — random-doubles', () => {
   const matchType: MatchType = 'random-doubles'
 
   it('assigns one match per available court', () => {
-    const players = [p(1), p(2), p(3), p(4), p(5), p(6)]
+    const players = [p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8)]
     const courts = [c(1), c(2)]
     const { matches } = generateRound(players, courts, matchType, new Set())
     expect(matches).toHaveLength(2)
@@ -794,5 +800,387 @@ describe('full round cycle — random-doubles', () => {
     expect(() => {
       generateRound(players, courts, 'random-doubles', usedMatchups)
     }).not.toThrow()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 16: Flow D — Random Doubles, 5 players (odd) — full scenario
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Flow D — Random Doubles, 5 players (odd)', () => {
+  const players5 = () => [p(1), p(2), p(3), p(4), p(5)]
+  const court1 = () => [c(1)]
+
+  it('D-1: canProgressFromPlayers accepts 5 (odd) for random-doubles without error', () => {
+    expect(canProgressFromPlayers(players5(), 'random-doubles')).toBe(true)
+  })
+
+  it('D-2: exactly 4 players play and exactly 1 player is benched', () => {
+    const { matches, benched } = generateRound(players5(), court1(), 'random-doubles', new Set())
+    const playingIds = matches.flatMap(m => [...m.team1, ...m.team2])
+    expect(playingIds).toHaveLength(4)
+    expect(new Set(playingIds).size).toBe(4)
+    expect(benched).toHaveLength(1)
+  })
+
+  it('D-3: benched player does not appear in any active match card', () => {
+    const { matches, benched } = generateRound(players5(), court1(), 'random-doubles', new Set())
+    const playingIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]))
+    benched.forEach(b => expect(playingIds.has(b.id)).toBe(false))
+  })
+
+  it('D-4: playing + benched = total players — no ghost players, no unaccounted', () => {
+    const players = players5()
+    const { matches, benched } = generateRound(players, court1(), 'random-doubles', new Set())
+    const playingCount = matches.flatMap(m => [...m.team1, ...m.team2]).length
+    expect(playingCount + benched.length).toBe(players.length)
+  })
+
+  it('D-5: bye rotation — round 2 benches a different player than round 1', () => {
+    const players = players5()
+    const usedMatchups = new Set<string>()
+
+    const r1 = generateRound(players, court1(), 'random-doubles', usedMatchups)
+    const benchedR1 = r1.benched[0].id
+    r1.matches.forEach(m => usedMatchups.add(getMatchKey(m.team1, m.team2)))
+
+    const r2 = generateRound(players, court1(), 'random-doubles', usedMatchups)
+    const benchedR2 = r2.benched[0].id
+    expect(benchedR2).not.toBe(benchedR1)
+  })
+
+  it('D-6: integrity holds after round 2 — playing and benched are disjoint, total correct', () => {
+    const players = players5()
+    const usedMatchups = new Set<string>()
+
+    const r1 = generateRound(players, court1(), 'random-doubles', usedMatchups)
+    r1.matches.forEach(m => usedMatchups.add(getMatchKey(m.team1, m.team2)))
+
+    const r2 = generateRound(players, court1(), 'random-doubles', usedMatchups)
+    const playing = r2.matches.flatMap(m => [...m.team1, ...m.team2])
+    const playingSet = new Set(playing)
+    expect(playing.length + r2.benched.length).toBe(players.length)
+    r2.benched.forEach(b => expect(playingSet.has(b.id)).toBe(false))
+  })
+
+  it('D-7: round 3 produces a third unique matchup', () => {
+    const players = players5()
+    const usedMatchups = new Set<string>()
+    const seenKeys: string[] = []
+
+    for (let i = 0; i < 3; i++) {
+      const { matches } = generateRound(players, court1(), 'random-doubles', usedMatchups)
+      expect(matches.length).toBeGreaterThan(0)
+      const key = getMatchKey(matches[0].team1, matches[0].team2)
+      expect(seenKeys).not.toContain(key)
+      seenKeys.push(key)
+      usedMatchups.add(key)
+    }
+  })
+
+  it('D-8: bye fairness over 5 rounds — no player benched more than 2× more than any other', () => {
+    const players = players5()
+    const usedMatchups = new Set<string>()
+    const benchCounts = new Map(players.map(pl => [pl.id, 0]))
+
+    for (let i = 0; i < 5; i++) {
+      const { matches, benched } = generateRound(players, court1(), 'random-doubles', usedMatchups)
+      benched.forEach(b => benchCounts.set(b.id, (benchCounts.get(b.id) ?? 0) + 1))
+      matches.forEach(m => usedMatchups.add(getMatchKey(m.team1, m.team2)))
+      const playing = matches.flatMap(m => [...m.team1, ...m.team2])
+      expect(playing.length + benched.length).toBe(players.length)
+    }
+
+    const counts = [...benchCounts.values()]
+    expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1)
+  })
+
+  it('D-9: app does not crash after matchups are exhausted — graceful fallback', () => {
+    const players = players5()
+    const usedMatchups = new Set<string>()
+    expect(() => {
+      for (let i = 0; i < 20; i++) {
+        const { matches } = generateRound(players, court1(), 'random-doubles', usedMatchups)
+        matches.forEach(m => usedMatchups.add(getMatchKey(m.team1, m.team2)))
+      }
+    }).not.toThrow()
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 17: Player Integrity Invariants (Flow G)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Flow G — Player integrity invariants', () => {
+  it('G-1/G-2: active players and benched players are mutually exclusive', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5), p(6)]
+    const { matches, benched } = generateRound(players, [c(1)], 'random-doubles', new Set())
+    const playingIds = new Set(matches.flatMap(m => [...m.team1, ...m.team2]))
+    const benchedIds = new Set(benched.map(b => b.id))
+    expect([...playingIds].filter(id => benchedIds.has(id))).toHaveLength(0)
+  })
+
+  it('G-3: no player appears in two different match cards (multi-court)', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8)]
+    const { matches } = generateRound(players, [c(1), c(2)], 'random-doubles', new Set())
+    const allIds = matches.flatMap(m => [...m.team1, ...m.team2])
+    expect(new Set(allIds).size).toBe(allIds.length)
+  })
+
+  it('G-3: no player appears twice within the same match card', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5), p(6)]
+    const { matches } = generateRound(players, [c(1)], 'random-doubles', new Set())
+    matches.forEach(m => {
+      const allInMatch = [...m.team1, ...m.team2]
+      expect(new Set(allInMatch).size).toBe(allInMatch.length)
+    })
+  })
+
+  it('G-5: playing + benched = total players — invariant holds across 5 consecutive rounds', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5), p(6)]
+    const usedMatchups = new Set<string>()
+    for (let round = 0; round < 5; round++) {
+      const { matches, benched } = generateRound(players, [c(1)], 'random-doubles', usedMatchups)
+      const playing = matches.flatMap(m => [...m.team1, ...m.team2])
+      expect(playing.length + benched.length).toBe(players.length)
+      matches.forEach(m => usedMatchups.add(getMatchKey(m.team1, m.team2)))
+    }
+  })
+
+  it('G-6: multi-court player isolation — court 1 and court 2 players are completely disjoint', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8)]
+    const { matches } = generateRound(players, [c(1), c(2)], 'random-doubles', new Set())
+    expect(matches).toHaveLength(2)
+    const c1Ids = new Set([...matches[0].team1, ...matches[0].team2])
+    const c2Ids = new Set([...matches[1].team1, ...matches[1].team2])
+    expect([...c1Ids].filter(id => c2Ids.has(id))).toHaveLength(0)
+    expect(c1Ids.size + c2Ids.size).toBe(8)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 18: Flow H — Additional edge cases (domain-testable)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Flow H — Additional edge cases', () => {
+  it('H-4: validatePlayerName trims whitespace before duplicate check', () => {
+    const existing = [makePlayer('1', 'Hafiz')]
+    expect(validatePlayerName('  Hafiz  ', existing).valid).toBe(false)
+  })
+
+  it('H-5: validatePlayerName accepts names with spaces and apostrophes', () => {
+    expect(validatePlayerName("Chong Wei", []).valid).toBe(true)
+    expect(validatePlayerName("O'Brien", []).valid).toBe(true)
+  })
+
+  it('H-6: validatePlayerCount — 16th accepted, 17th rejected', () => {
+    expect(validatePlayerCount(16, 'singles').valid).toBe(true)
+    expect(validatePlayerCount(17, 'singles').valid).toBe(false)
+  })
+
+  it('H-7: validateCourtCount — 8th accepted, 9th rejected', () => {
+    expect(validateCourtCount(8).valid).toBe(true)
+    expect(validateCourtCount(9).valid).toBe(false)
+  })
+
+  it('H-14: 5 players random-doubles — CTA enabled, 4 play 1 benched', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5)]
+    expect(canProgressFromPlayers(players, 'random-doubles')).toBe(true)
+    const { matches, benched } = generateRound(players, [c(1)], 'random-doubles', new Set())
+    expect(matches.flatMap(m => [...m.team1, ...m.team2])).toHaveLength(4)
+    expect(benched).toHaveLength(1)
+  })
+
+  it('H-15: 9 players, 2 courts — 8 playing, 1 benched, courts disjoint', () => {
+    const players = Array.from({ length: 9 }, (_, i) => p(i + 1))
+    const { matches, benched } = generateRound(players, [c(1), c(2)], 'random-doubles', new Set())
+    const playingIds = matches.flatMap(m => [...m.team1, ...m.team2])
+    expect(playingIds).toHaveLength(8)
+    expect(new Set(playingIds).size).toBe(8)
+    expect(benched).toHaveLength(1)
+    const c1Ids = new Set([...matches[0].team1, ...matches[0].team2])
+    const c2Ids = new Set([...matches[1].team1, ...matches[1].team2])
+    expect([...c1Ids].filter(id => c2Ids.has(id))).toHaveLength(0)
+  })
+
+  it('H-16: validateCourtName rejects whitespace-only name', () => {
+    expect(validateCourtName('   ', []).valid).toBe(false)
+  })
+
+  it('H-20: 4 players, 1 court (minimum valid) — all 4 play, 0 benched', () => {
+    const players = [p(1), p(2), p(3), p(4)]
+    const { matches, benched } = generateRound(players, [c(1)], 'random-doubles', new Set())
+    expect(matches).toHaveLength(1)
+    expect(matches.flatMap(m => [...m.team1, ...m.team2])).toHaveLength(4)
+    expect(benched).toHaveLength(0)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 19: Flow I — State and domain integrity
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Flow I — State and domain integrity', () => {
+  it('I-2: getMatchOptions excludes players passed via activeIds regardless of player.status', () => {
+    const players = [p(1), p(2), p(3), p(4)].map(pl => ({ ...pl, status: 'benched' as const }))
+    const activeIds = new Set(['p1', 'p2', 'p3', 'p4'])
+    expect(getMatchOptions(players, 'random-doubles', new Set(), activeIds)).toHaveLength(0)
+  })
+
+  it('I-2 (known gap): getMatchOptions uses activeIds, not player.status — playing-status players included when activeIds is empty', () => {
+    const players = [p(1), p(2), p(3), p(4)].map(pl => ({ ...pl, status: 'playing' as const }))
+    expect(getMatchOptions(players, 'random-doubles', new Set(), new Set()).length).toBeGreaterThan(0)
+  })
+
+  it('I-3: byeHistory grows by exactly 1 per round over 20 rounds (5 players, 1 court)', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5)]
+    const usedMatchups = new Set<string>()
+    let byeHistory: string[] = []
+    for (let round = 0; round < 20; round++) {
+      const result = generateRound(players, [c(1)], 'random-doubles', usedMatchups, byeHistory, round + 1, round + 1)
+      byeHistory = result.updatedByeHistory
+      result.matches.forEach(m => usedMatchups.add(getMatchKey(m.team1, m.team2)))
+    }
+    expect(byeHistory).toHaveLength(20)
+  })
+
+  it('I-3: bye fairness over 20 rounds — max bench count exceeds min by at most 1', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5)]
+    const usedMatchups = new Set<string>()
+    let byeHistory: string[] = []
+    const benchCounts = new Map(players.map(pl => [pl.id, 0]))
+    for (let round = 0; round < 20; round++) {
+      const result = generateRound(players, [c(1)], 'random-doubles', usedMatchups, byeHistory, round + 1, round + 1)
+      byeHistory = result.updatedByeHistory
+      result.benched.forEach((id: string) => benchCounts.set(id, (benchCounts.get(id) ?? 0) + 1))
+      result.matches.forEach(m => usedMatchups.add(getMatchKey(m.team1, m.team2)))
+    }
+    const counts = [...benchCounts.values()]
+    expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1)
+  })
+
+  it('I-4: active match key is in usedMatchups — prevents same matchup on a second court', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8)]
+    const usedMatchups = new Set<string>()
+
+    const r1 = generateRound(players, [c(1)], 'random-doubles', usedMatchups)
+    const court1Key = getMatchKey(r1.matches[0].team1, r1.matches[0].team2)
+    usedMatchups.add(court1Key)
+
+    const r2 = generateRound(players, [c(2)], 'random-doubles', usedMatchups)
+    if (r2.matches.length > 0) {
+      expect(getMatchKey(r2.matches[0].team1, r2.matches[0].team2)).not.toBe(court1Key)
+    }
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 20: Flow B — Fixed Doubles partner integrity
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Flow B — Fixed Doubles partner integrity', () => {
+  function makePairedPlayers() {
+    return [
+      { id: 'p1', name: 'Rosberg', status: 'benched' as const, partnerId: 'p2' },
+      { id: 'p2', name: 'Michael', status: 'benched' as const, partnerId: 'p1' },
+      { id: 'p3', name: 'Noni', status: 'benched' as const, partnerId: 'p4' },
+      { id: 'p4', name: 'Remy', status: 'benched' as const, partnerId: 'p3' },
+      { id: 'p5', name: 'Jojo', status: 'benched' as const, partnerId: 'p6' },
+      { id: 'p6', name: 'Razak', status: 'benched' as const, partnerId: 'p5' },
+    ]
+  }
+
+  const PAIRS = [['p1','p2'], ['p3','p4'], ['p5','p6']].map(pair => [...pair].sort().join(','))
+
+  it('B-5: each team in a generated match is always a fixed pair', () => {
+    const { matches } = generateRound(makePairedPlayers(), [c(1)], 'fixed-doubles', new Set())
+    matches.forEach(match => {
+      expect(PAIRS).toContain([...match.team1].sort().join(','))
+      expect(PAIRS).toContain([...match.team2].sort().join(','))
+    })
+  })
+
+  it('B-7: partners are preserved across multiple rounds — never split', () => {
+    const usedMatchups = new Set<string>()
+    for (let i = 0; i < 3; i++) {
+      const { matches } = generateRound(makePairedPlayers(), [c(1)], 'fixed-doubles', usedMatchups)
+      matches.forEach(match => {
+        expect(PAIRS).toContain([...match.team1].sort().join(','))
+        expect(PAIRS).toContain([...match.team2].sort().join(','))
+      })
+      matches.forEach(m => usedMatchups.add(getMatchKey(m.team1, m.team2)))
+    }
+  })
+
+  it('B-2: validatePlayerCount rejects odd count for fixed-doubles', () => {
+    expect(validatePlayerCount(7, 'fixed-doubles').valid).toBe(false)
+    expect(validatePlayerCount(6, 'fixed-doubles').valid).toBe(true)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 21: E-3 — More courts than possible matches
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('E-3 — More courts than possible matches', () => {
+  it('fills only as many courts as valid matchups allow, does not crash', () => {
+    const players = [p(1), p(2), p(3), p(4)]
+    const { matches, benched } = generateRound(players, [c(1), c(2), c(3)], 'random-doubles', new Set())
+    expect(matches.length).toBeLessThanOrEqual(1)
+    const playingIds = matches.flatMap(m => [...m.team1, ...m.team2])
+    expect(playingIds.length + benched.length).toBe(players.length)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 22: The Invariants — must hold at all times
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('The Invariants', () => {
+  const scenarios: [number, number, MatchType][] = [
+    [4, 1, 'random-doubles'],
+    [5, 1, 'random-doubles'],
+    [6, 1, 'random-doubles'],
+    [6, 2, 'random-doubles'],
+    [8, 2, 'random-doubles'],
+    [9, 2, 'random-doubles'],
+    [4, 1, 'singles'],
+    [6, 2, 'singles'],
+  ]
+
+  it('I-1: playing + benched = total players across all scenario combinations', () => {
+    for (const [playerCount, courtCount, matchType] of scenarios) {
+      const players = Array.from({ length: playerCount }, (_, i) => p(i + 1))
+      const courts = Array.from({ length: courtCount }, (_, i) => c(i + 1))
+      const { matches, benched } = generateRound(players, courts, matchType, new Set())
+      const playing = matches.flatMap(m => [...m.team1, ...m.team2])
+      expect(playing.length + benched.length).toBe(playerCount)
+    }
+  })
+
+  it('I-2: a player cannot appear in both playing and benched simultaneously', () => {
+    for (const [playerCount, courtCount, matchType] of scenarios) {
+      const players = Array.from({ length: playerCount }, (_, i) => p(i + 1))
+      const courts = Array.from({ length: courtCount }, (_, i) => c(i + 1))
+      const { matches, benched } = generateRound(players, courts, matchType, new Set())
+      const playingSet = new Set(matches.flatMap(m => [...m.team1, ...m.team2]))
+      benched.forEach(b => expect(playingSet.has(b.id)).toBe(false))
+    }
+  })
+
+  it('I-3: a player cannot appear in two active matches across courts', () => {
+    const players = Array.from({ length: 8 }, (_, i) => p(i + 1))
+    const { matches } = generateRound(players, [c(1), c(2)], 'random-doubles', new Set())
+    const allIds = matches.flatMap(m => [...m.team1, ...m.team2])
+    expect(new Set(allIds).size).toBe(allIds.length)
+  })
+
+  it('I-4: a player cannot appear twice within the same match', () => {
+    const players = Array.from({ length: 6 }, (_, i) => p(i + 1))
+    const { matches } = generateRound(players, [c(1)], 'random-doubles', new Set())
+    matches.forEach(m => {
+      const allInMatch = [...m.team1, ...m.team2]
+      expect(new Set(allInMatch).size).toBe(allInMatch.length)
+    })
   })
 })

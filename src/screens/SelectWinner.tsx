@@ -146,16 +146,16 @@ export function SelectWinner() {
       <div
         style={{
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          flexDirection: 'column',
+          gap: '8px',
           marginTop: 'auto',
         }}
       >
-        <Button variant="ghost" onClick={handleEndMatch}>
-          End Match
-        </Button>
-        <Button variant="primary" disabled={!selectedTeam} onClick={handleInsertScore}>
+        <Button variant="primary" fullWidth disabled={!selectedTeam} onClick={handleInsertScore}>
           Insert Score ›
+        </Button>
+        <Button variant="ghost" fullWidth onClick={handleEndMatch}>
+          End Match
         </Button>
       </div>
     </div>

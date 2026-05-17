@@ -159,8 +159,8 @@ export function WinningPoint() {
         </div>
       )}
 
-      <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end' }}>
-        <Button variant="primary" disabled={!isValid} onClick={handleNext}>
+      <div style={{ marginTop: 'auto' }}>
+        <Button variant="primary" fullWidth disabled={!isValid} onClick={handleNext}>
           Court ›
         </Button>
       </div>

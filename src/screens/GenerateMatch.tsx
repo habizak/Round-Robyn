@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useSession, getPlayerName } from '../hooks/useSession'
+import { useSession, getPlayerName, getPlayerMatchCounts } from '../hooks/useSession'
 import { Button } from '../components/Button'
 import { Modal } from '../components/Modal'
 import {
@@ -11,6 +11,8 @@ import {
 } from '../domain/matchGenerator'
 import { canGenerateOnCourt, getActivePlayerIds } from '../domain/sessionRules'
 import type { Session } from '../types'
+
+const PAGE_SIZE = 4
 
 const backNavStyle: React.CSSProperties = {
   background: 'none',
@@ -87,7 +89,8 @@ export function GenerateMatch() {
   const navigate = useNavigate()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [filterModalOpen, setFilterModalOpen] = useState(false)
-  const [filterPlayerId, setFilterPlayerId] = useState<string | null>(null)
+  const [filterPlayerIds, setFilterPlayerIds] = useState<string[]>([])
+  const [page, setPage] = useState(0)
 
   const court = session.courts.find(c => c.id === courtId)
   const canGenerate = courtId ? canGenerateOnCourt(session, courtId) : { valid: false }
@@ -98,28 +101,49 @@ export function GenerateMatch() {
     }
   }, [courtId, court, canGenerate.valid, navigate])
 
-  const allOptions = useMemo(() => {
+  useEffect(() => {
+    setFilterPlayerIds([])
+  }, [])
+
+  const allScoredOptions = useMemo(() => {
     const activeIds = getActivePlayerIds(session.matches)
+    const matchCounts = getPlayerMatchCounts(session)
     return getMatchOptions(
       session.players,
       session.matchType,
       getUsedMatchups(session.matches),
       activeIds,
+      100,
+      matchCounts,
     )
   }, [session.players, session.matchType, session.matches])
 
-  const visibleOptions = useMemo(
-    () => filterMatchOptions(allOptions, filterPlayerId),
-    [allOptions, filterPlayerId],
+  const filteredOptions = useMemo(
+    () => filterMatchOptions(allScoredOptions, filterPlayerIds),
+    [allScoredOptions, filterPlayerIds],
   )
 
+  // Reset page and selection when filter or scored options change
+  useEffect(() => {
+    setPage(0)
+    setSelectedKey(null)
+  }, [filteredOptions])
+
+  const visibleOptions = filteredOptions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  const canRegenerate = filteredOptions.length > PAGE_SIZE
   const selectedOption = visibleOptions.find(o => o.key === selectedKey) ?? null
 
-  useEffect(() => {
-    if (selectedKey && !visibleOptions.some(o => o.key === selectedKey)) {
-      setSelectedKey(null)
-    }
-  }, [visibleOptions, selectedKey])
+  function handleRegenerate() {
+    const nextPage = (page + 1) * PAGE_SIZE < filteredOptions.length ? page + 1 : 0
+    setPage(nextPage)
+    setSelectedKey(null)
+  }
+
+  function toggleFilter(id: string) {
+    setFilterPlayerIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
 
   function handleSubmit() {
     if (!courtId || !selectedOption) return
@@ -133,6 +157,8 @@ export function GenerateMatch() {
   }
 
   if (!court || !canGenerate.valid) return null
+
+  const benchedPlayers = session.players.filter(p => p.status === 'benched')
 
   return (
     <div
@@ -164,34 +190,57 @@ export function GenerateMatch() {
 
       <div style={{ marginBottom: '16px' }}>
         <Button variant="outline-pill" size="sm" onClick={() => setFilterModalOpen(true)}>
-          = Filter
+          = Filter{filterPlayerIds.length > 0 ? ` (${filterPlayerIds.length})` : ''}
         </Button>
       </div>
 
-      {filterPlayerId && (
+      {filterPlayerIds.length > 0 && (
         <div
           style={{
             display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             marginBottom: '12px',
           }}
         >
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '12px',
-              backgroundColor: '#A4C92C',
-              borderRadius: '9999px',
-              padding: '2px 10px',
-              color: 'white',
-            }}
-          >
-            {getPlayerName(session, filterPlayerId)}
-          </span>
+          {filterPlayerIds.map(id => (
+            <span
+              key={id}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '12px',
+                backgroundColor: '#A4C92C',
+                borderRadius: '9999px',
+                padding: '2px 8px 2px 10px',
+                color: 'white',
+              }}
+            >
+              {getPlayerName(session, id)}
+              <button
+                type="button"
+                onClick={() => toggleFilter(id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'white',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '13px',
+                  padding: '0',
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </span>
+          ))}
           <button
             type="button"
-            onClick={() => setFilterPlayerId(null)}
+            onClick={() => setFilterPlayerIds([])}
             style={{
               background: 'none',
               border: 'none',
@@ -199,9 +248,10 @@ export function GenerateMatch() {
               color: '#9a9a9a',
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: '12px',
+              padding: '0',
             }}
           >
-            × clear
+            clear all
           </button>
         </div>
       )}
@@ -217,7 +267,7 @@ export function GenerateMatch() {
               marginTop: '24px',
             }}
           >
-            {allOptions.length === 0
+            {allScoredOptions.length === 0
               ? 'No match options available right now.'
               : 'No options match this filter.'}
           </p>
@@ -234,7 +284,12 @@ export function GenerateMatch() {
         )}
       </div>
 
-      <div style={{ marginTop: '24px' }}>
+      <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {canRegenerate && (
+          <Button variant="outline-pill" fullWidth onClick={handleRegenerate}>
+            ↻ Re-generate
+          </Button>
+        )}
         <Button
           variant="primary"
           fullWidth
@@ -247,23 +302,20 @@ export function GenerateMatch() {
 
       <Modal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter by Player">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {session.players
-            .filter(p => p.status === 'benched')
-            .map(p => (
+          {benchedPlayers.map(p => {
+            const active = filterPlayerIds.includes(p.id)
+            return (
               <button
                 key={p.id}
                 type="button"
-                onClick={() => {
-                  setFilterPlayerId(p.id)
-                  setFilterModalOpen(false)
-                }}
+                onClick={() => toggleFilter(p.id)}
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
                   fontSize: '14px',
                   padding: '10px 12px',
-                  background: filterPlayerId === p.id ? '#A4C92C' : 'var(--color-bg)',
-                  color: filterPlayerId === p.id ? 'white' : '#3c3c3c',
-                  border: '1.5px solid var(--color-border)',
+                  background: active ? '#A4C92C' : 'var(--color-bg)',
+                  color: active ? 'white' : '#3c3c3c',
+                  border: active ? '1.5px solid #A4C92C' : '1.5px solid var(--color-border)',
                   borderRadius: '12px',
                   cursor: 'pointer',
                   textAlign: 'left',
@@ -271,8 +323,16 @@ export function GenerateMatch() {
               >
                 {p.name}
               </button>
-            ))}
+            )
+          })}
         </div>
+        {filterPlayerIds.length > 0 && (
+          <div style={{ marginTop: '12px' }}>
+            <Button variant="primary" fullWidth onClick={() => setFilterModalOpen(false)}>
+              Apply
+            </Button>
+          </div>
+        )}
       </Modal>
     </div>
   )

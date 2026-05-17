@@ -307,3 +307,16 @@ export function getCompletedMatches(session: Session): Match[] {
 export function getBenchedPlayers(session: Session): Player[] {
   return session.players.filter(p => p.status === 'benched')
 }
+
+export function getPlayerMatchCounts(session: Session): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const p of session.players) counts.set(p.id, 0)
+  for (const m of session.matches) {
+    if (m.status === 'completed' || m.status === 'playing') {
+      for (const id of [...m.team1, ...m.team2]) {
+        counts.set(id, (counts.get(id) ?? 0) + 1)
+      }
+    }
+  }
+  return counts
+}

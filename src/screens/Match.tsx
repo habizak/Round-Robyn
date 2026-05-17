@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useSession, getPlayerName, getCompletedMatches, getBenchedPlayers } from '../hooks/useSession'
+import { useSession, getPlayerName, getCompletedMatches, getBenchedPlayers, getPlayerMatchCounts } from '../hooks/useSession'
 import { Button } from '../components/Button'
 import { Modal } from '../components/Modal'
 import { canGenerateOnCourt } from '../domain/sessionRules'
@@ -29,6 +29,7 @@ export function Match() {
   const activeMatches = session.matches.filter(m => m.status === 'playing')
   const completedMatches = getCompletedMatches(session)
   const benchedPlayers = getBenchedPlayers(session)
+  const matchCounts = getPlayerMatchCounts(session)
   const nextMatchNumber = session.matches.length + 1
 
   function getMatchForCourt(courtId: string): MatchType | undefined {
@@ -204,33 +205,6 @@ export function Match() {
         flexDirection: 'column',
       }}
     >
-      {/* Header: gear icon top-right */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          alignItems: 'center',
-          marginBottom: '8px',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => setShowEndConfirm(true)}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: '#9a9a9a',
-            fontSize: '20px',
-            fontFamily: "'JetBrains Mono', monospace",
-            padding: '4px',
-          }}
-          title="Settings"
-        >
-          ⚙
-        </button>
-      </div>
-
       {/* Tab bar — no underline border */}
       <div style={{ display: 'flex', gap: '20px', marginBottom: '24px' }}>
         {(['match', 'history'] as const).map(t => (
@@ -352,7 +326,7 @@ export function Match() {
                       color: '#3c3c3c',
                     }}
                   >
-                    {p.name}
+                    {p.name} ({matchCounts.get(p.id) ?? 0})
                   </span>
                 ))}
               </div>
@@ -552,12 +526,12 @@ export function Match() {
         >
           Are you sure you want to end the current session? All match data will be cleared.
         </p>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Button variant="ghost" onClick={() => setShowEndConfirm(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleEndSession}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <Button variant="primary" fullWidth onClick={handleEndSession}>
             End Session
+          </Button>
+          <Button variant="ghost" fullWidth onClick={() => setShowEndConfirm(false)}>
+            Cancel
           </Button>
         </div>
       </Modal>

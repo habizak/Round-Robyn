@@ -217,8 +217,31 @@ export function generateRound(
     return { matches: [], benched: players.map(p => p.id), updatedByeHistory: byeHistory! }
   }
 
-  // Shuffle for variety while respecting priority
-  const shuffled = shuffle(candidateMatchups)
+  // Shuffle for variety, then sort ascending by sum of participant play counts
+  // so under-played players get priority without losing variety within equal groups.
+  const shuffled = shuffle(candidateMatchups).sort((a, b) => {
+    const sumA = [...a[0], ...a[1]].reduce((s, id) => s + (playCounts.get(id) ?? 0), 0)
+    const sumB = [...b[0], ...b[1]].reduce((s, id) => s + (playCounts.get(id) ?? 0), 0)
+    return sumA - sumB
+  })
+
+  // When byeHistory is available, re-sort by bye count of EXCLUDED players ascending —
+  // this directly ensures the least-benched player(s) take the next bye slot.
+  if (byeHistory !== undefined) {
+    const byeCounts = new Map<string, number>()
+    for (const p of players) byeCounts.set(p.id, 0)
+    for (const id of byeHistory) {
+      byeCounts.set(id, (byeCounts.get(id) ?? 0) + 1)
+    }
+    const allPlayerIds = players.map(p => p.id)
+    shuffled.sort((a, b) => {
+      const playingA = new Set([...a[0], ...a[1]])
+      const playingB = new Set([...b[0], ...b[1]])
+      const sumA = allPlayerIds.filter(id => !playingA.has(id)).reduce((s, id) => s + (byeCounts.get(id) ?? 0), 0)
+      const sumB = allPlayerIds.filter(id => !playingB.has(id)).reduce((s, id) => s + (byeCounts.get(id) ?? 0), 0)
+      return sumA - sumB
+    })
+  }
 
   // Greedily assign matchups to courts.
   // Primary pass: no player reuse (ideal).
@@ -264,19 +287,14 @@ export function generateRound(
     const assignedMatchKeys = new Set(matches.map(m => getMatchKey(m.team1, m.team2)))
 
     for (const court of remainingCourts) {
-      // Prefer matchups whose players are not already playing this round
       const idx = sortedPool.findIndex(([t1, t2]) => {
         const key = getMatchKey(t1, t2)
         if (assignedMatchKeys.has(key)) return false
         const allP = [...t1, ...t2]
         return allP.every(id => !usedPlayerIds.has(id))
       })
-      // If no non-overlapping matchup exists, allow player reuse (same 4 players, new key)
-      const fallbackIdx = idx !== -1 ? idx : sortedPool.findIndex(
-        ([t1, t2]) => !assignedMatchKeys.has(getMatchKey(t1, t2))
-      )
-      if (fallbackIdx === -1) break
-      const [team1, team2] = sortedPool.splice(fallbackIdx, 1)[0]
+      if (idx === -1) break
+      const [team1, team2] = sortedPool.splice(idx, 1)[0]
       assignedMatchKeys.add(getMatchKey(team1, team2))
       ;[...team1, ...team2].forEach(id => usedPlayerIds.add(id))
       matches.push({
@@ -346,13 +364,15 @@ function scoreMatchup(
   players: Player[],
   usedMatchups: Set<string>,
   playCounts: Map<string, number>,
+  playerMatchCounts?: Map<string, number>,
 ): number {
+  const effectiveCounts = playerMatchCounts ?? playCounts
   const ids = [...team1, ...team2]
   let score = 0
   for (const id of ids) {
     const player = players.find(p => p.id === id)
     if (player?.status === 'benched') score += 10
-    score -= playCounts.get(id) ?? 0
+    score -= effectiveCounts.get(id) ?? 0
   }
   if (!usedMatchups.has(getMatchKey(team1, team2))) score += 5
   return score
@@ -368,6 +388,7 @@ export function getMatchOptions(
   usedMatchups: Set<string>,
   activePlayerIds: Set<string>,
   maxOptions = 4,
+  playerMatchCounts?: Map<string, number>,
 ): MatchOption[] {
   const available = players.filter(p => !activePlayerIds.has(p.id))
   const minPlayers = minPlayersForMatchType(matchType)
@@ -381,7 +402,7 @@ export function getMatchOptions(
     team1,
     team2,
     key: getMatchKey(team1, team2),
-    score: scoreMatchup(team1, team2, players, usedMatchups, playCounts),
+    score: scoreMatchup(team1, team2, players, usedMatchups, playCounts, playerMatchCounts),
   }))
 
   scored.sort((a, b) => b.score - a.score)
@@ -400,11 +421,11 @@ export function getMatchOptions(
 
 export function filterMatchOptions(
   options: MatchOption[],
-  playerId: string | null,
+  playerIds: string[],
 ): MatchOption[] {
-  if (!playerId) return options
-  return options.filter(
-    o => o.team1.includes(playerId) || o.team2.includes(playerId),
+  if (playerIds.length === 0) return options
+  return options.filter(o =>
+    playerIds.every(id => o.team1.includes(id) || o.team2.includes(id))
   )
 }
 

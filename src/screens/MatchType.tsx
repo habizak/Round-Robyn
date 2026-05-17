@@ -183,9 +183,10 @@ export function MatchType() {
         ))}
       </div>
 
-      <div style={{ marginTop: 'auto', paddingTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginTop: 'auto', paddingTop: '32px' }}>
         <Button
           variant="primary"
+          fullWidth
           disabled={!selected}
           onClick={handleNext}
         >
