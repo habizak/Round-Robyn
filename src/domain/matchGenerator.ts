@@ -245,7 +245,7 @@ export function generateRound(
       courtId: court.id,
       team1,
       team2,
-      status: 'pending',
+      status: 'playing',
       matchNumber: matchNum++,
       round: currentRound ?? 0,
     })
@@ -266,7 +266,7 @@ export function generateRound(
         courtId: court.id,
         team1,
         team2,
-        status: 'pending',
+        status: 'playing',
         matchNumber: matchNum++,
         round: currentRound ?? 0,
       })
