@@ -64,7 +64,7 @@ export function Match() {
         <div
           style={{
             fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '14px',
+            fontSize: '16px',
             fontWeight: 700,
             color: '#3c3c3c',
             marginBottom: '8px',
@@ -232,7 +232,7 @@ export function Match() {
       </div>
 
       {/* Tab bar — no underline border */}
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', gap: '20px', marginBottom: '24px' }}>
         {(['match', 'history'] as const).map(t => (
           <button
             key={t}
@@ -240,13 +240,14 @@ export function Match() {
             onClick={() => setTab(t)}
             style={{
               fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '16px',
+              fontSize: '28px',
               fontWeight: tab === t ? 700 : 400,
               background: 'none',
               border: 'none',
               cursor: 'pointer',
               color: tab === t ? '#3c3c3c' : '#dcdcdc',
               padding: '0',
+              lineHeight: '1.2',
             }}
           >
             {t === 'match' ? 'Match' : 'History'}
@@ -262,13 +263,16 @@ export function Match() {
               <div
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '13px',
+                  fontSize: '20px',
                   fontWeight: 700,
                   color: '#3c3c3c',
                   marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
                 }}
               >
-                <img src="/icon_available-court.png" alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle', marginRight: '6px' }} />Available Court
+                <img src="/icon_available-court.png" alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />Available Court
               </div>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                 {emptyCourts.map(court => (
@@ -277,7 +281,7 @@ export function Match() {
                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
                   >
                     <img
-                      src="/icon_court-small.png"
+                      src="/icon_court.png"
                       alt={court.name}
                       style={{ width: '56px', height: '56px', objectFit: 'contain' }}
                     />
@@ -300,13 +304,16 @@ export function Match() {
           <div
             style={{
               fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '13px',
+              fontSize: '20px',
               fontWeight: 700,
               color: '#3c3c3c',
               marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
             }}
           >
-            <img src="/icon_court.png" alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle', marginRight: '6px' }} />Courts
+            <img src="/icon_court-small.png" alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />Courts
           </div>
 
           <div>
@@ -324,13 +331,16 @@ export function Match() {
               <div
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '13px',
+                  fontSize: '20px',
                   fontWeight: 700,
                   color: '#3c3c3c',
                   marginBottom: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
                 }}
               >
-                <img src="/icon_benched.png" alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle', marginRight: '6px' }} />Benched
+                <img src="/icon_benched.png" alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />Benched
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {benchedPlayers.map((p: Player) => (

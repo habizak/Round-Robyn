@@ -65,7 +65,8 @@ export function MatchType() {
       padding: '16px',
       cursor: 'pointer',
       backgroundColor: 'var(--color-surface)',
-      flex: 1,
+      width: 'calc(50% - 6px)',
+      boxSizing: 'border-box',
     }
   }
 
@@ -87,7 +88,7 @@ export function MatchType() {
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '32px',
+          fontSize: '28px',
           fontWeight: 700,
           color: '#3c3c3c',
           marginBottom: '24px',
@@ -100,7 +101,7 @@ export function MatchType() {
       <div
         style={{
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '16px',
+          fontSize: '20px',
           fontWeight: 700,
           color: '#3c3c3c',
           marginBottom: '12px',

@@ -61,8 +61,8 @@ export function Players() {
       setNavError(`At least ${minPlayers} players required.`)
       return
     }
-    if (isDoubles && players.length % 2 !== 0) {
-      setNavError('Need an even number of players for doubles.')
+    if (isFixedDoubles && players.length % 2 !== 0) {
+      setNavError('Need an even number of players for fixed doubles.')
       return
     }
     if (isFixedDoubles) {
@@ -104,7 +104,7 @@ export function Players() {
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '32px',
+          fontSize: '28px',
           fontWeight: 700,
           color: '#3c3c3c',
           marginBottom: '24px',

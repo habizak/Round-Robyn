@@ -82,7 +82,7 @@ export function SelectWinner() {
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '32px',
+          fontSize: '28px',
           fontWeight: 700,
           color: '#3c3c3c',
           marginBottom: '24px',
