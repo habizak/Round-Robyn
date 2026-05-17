@@ -8,7 +8,7 @@ const SINGLES_OPTION = {
   value: 'singles' as MatchType,
   label: 'Singles',
   description: 'Individual matches',
-  icon: '🏃',
+  icon: '/logo_match_single.png',
 }
 
 const DOUBLES_OPTIONS = [
@@ -16,13 +16,13 @@ const DOUBLES_OPTIONS = [
     value: 'fixed-doubles' as MatchType,
     label: 'Fixed Doubles',
     description: 'Partners stay the same',
-    icon: '👥',
+    icon: '/icon_match_doubles.png',
   },
   {
     value: 'random-doubles' as MatchType,
     label: 'Random Doubles',
     description: 'Randomly assigned teams',
-    icon: '🔀',
+    icon: '/icon_match_doubles.png',
   },
 ]
 
@@ -113,7 +113,7 @@ export function MatchType() {
         style={cardStyle(SINGLES_OPTION.value)}
         onClick={() => handleSelect(SINGLES_OPTION.value)}
       >
-        <div style={{ fontSize: '24px', marginBottom: '8px' }}>{SINGLES_OPTION.icon}</div>
+        <img src={SINGLES_OPTION.icon} alt="Singles" style={{ width: '36px', height: '36px', objectFit: 'contain', marginBottom: '8px' }} />
         <div
           style={{
             fontFamily: "'JetBrains Mono', monospace",
@@ -157,7 +157,7 @@ export function MatchType() {
             style={cardStyle(opt.value)}
             onClick={() => handleSelect(opt.value)}
           >
-            <div style={{ fontSize: '24px', marginBottom: '8px' }}>{opt.icon}</div>
+            <img src={opt.icon} alt={opt.label} style={{ width: '36px', height: '36px', objectFit: 'contain', marginBottom: '8px' }} />
             <div
               style={{
                 fontFamily: "'JetBrains Mono', monospace",

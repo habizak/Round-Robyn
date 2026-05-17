@@ -268,7 +268,7 @@ export function Match() {
                   marginBottom: '12px',
                 }}
               >
-                🛡 Available Court
+                <img src="/icon_available-court.png" alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle', marginRight: '6px' }} />Available Court
               </div>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                 {emptyCourts.map(court => (
@@ -276,13 +276,10 @@ export function Match() {
                     key={court.id}
                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
                   >
-                    <div
-                      style={{
-                        width: '56px',
-                        height: '56px',
-                        backgroundColor: '#A4C92C',
-                        borderRadius: '8px',
-                      }}
+                    <img
+                      src="/icon_court-small.png"
+                      alt={court.name}
+                      style={{ width: '56px', height: '56px', objectFit: 'contain' }}
                     />
                     <span
                       style={{
@@ -309,7 +306,7 @@ export function Match() {
               marginBottom: '12px',
             }}
           >
-            🏛 Courts
+            <img src="/icon_court.png" alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle', marginRight: '6px' }} />Courts
           </div>
 
           <div>
@@ -333,7 +330,7 @@ export function Match() {
                   marginBottom: '8px',
                 }}
               >
-                🪑 Benched
+                <img src="/icon_benched.png" alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle', marginRight: '6px' }} />Benched
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {benchedPlayers.map((p: Player) => (

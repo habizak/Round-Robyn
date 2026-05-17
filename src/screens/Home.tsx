@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../hooks/useSession'
 import { Button } from '../components/Button'
-import heroImg from '../assets/hero.png'
 
 export function Home() {
   const { session, dispatch } = useSession()
@@ -37,7 +36,7 @@ export function Home() {
       }}
     >
       <img
-        src={heroImg}
+        src="/logo_matcha.png"
         alt="Matcha"
         style={{ width: '100px', height: '100px', objectFit: 'contain' }}
       />
