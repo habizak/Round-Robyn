@@ -115,7 +115,6 @@ export function Court() {
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '8px 12px',
-              backgroundColor: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
             }}
           >

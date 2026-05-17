@@ -8,7 +8,8 @@ import {
 import type { ReactNode } from 'react'
 import type { Session, MatchType, Player, Court, Match, Score } from '../types'
 import { loadSession, saveSession, clearSession } from '../infrastructure/storage'
-import { generateRound, generateMatchKey, generateSingleMatch } from '../domain/matchGenerator'
+import { generateRound, generateMatchKey } from '../domain/matchGenerator'
+import { canGenerateOnCourt } from '../domain/sessionRules'
 
 // ─── Actions ────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ type Action =
   | { type: 'START_SESSION' }
   | { type: 'COMPLETE_MATCH'; matchId: string; score: Score }
   | { type: 'GENERATE_NEXT_MATCH'; courtId: string }
+  | { type: 'ASSIGN_MATCH'; courtId: string; team1: string[]; team2: string[] }
   | { type: 'END_SESSION' }
   | { type: 'LOAD_SESSION'; session: Session }
 
@@ -165,38 +167,33 @@ function sessionReducer(state: Session, action: Action): Session {
     }
 
     case 'GENERATE_NEXT_MATCH': {
-      const court = state.courts.find(c => c.id === action.courtId)
-      if (!court || court.status !== 'empty') return state
+      if (!canGenerateOnCourt(state, action.courtId).valid) return state
 
-      // Players currently playing
-      const activePlayerIds = new Set(
-        state.matches
-          .filter(m => m.status === 'playing')
-          .flatMap(m => [...m.team1, ...m.team2])
-      )
-
+      const court = state.courts.find(c => c.id === action.courtId)!
+      const benchedPlayers = state.players.filter(p => p.status === 'benched')
       const usedMatchups = getUsedMatchups(state.matches)
       const matchNumber = state.matches.length + 1
 
-      const newMatch = generateSingleMatch(
-        state.players,
-        court,
+      const result = generateRound(
+        benchedPlayers,
+        [{ ...court, status: 'empty' }],
         state.matchType,
         usedMatchups,
-        activePlayerIds,
+        state.byeHistory,
         state.currentRound,
-        matchNumber
-      )
+        matchNumber,
+      ) as { matches: Match[]; benched: string[]; updatedByeHistory: string[] }
 
-      if (!newMatch) return state
+      if (result.matches.length === 0) return state
 
+      const newMatch = result.matches[0]
       const courts = state.courts.map(c =>
-        c.id === action.courtId ? { ...c, status: 'occupied' as const } : c
+        c.id === action.courtId ? { ...c, status: 'occupied' as const } : c,
       )
 
       const playingIds = new Set([...newMatch.team1, ...newMatch.team2])
       const players = state.players.map(p =>
-        playingIds.has(p.id) ? { ...p, status: 'playing' as const } : p
+        playingIds.has(p.id) ? { ...p, status: 'playing' as const } : p,
       )
 
       return {
@@ -204,7 +201,46 @@ function sessionReducer(state: Session, action: Action): Session {
         courts,
         players,
         matches: [...state.matches, newMatch],
-        byeHistory: [...state.byeHistory, ...state.players.filter(p => !playingIds.has(p.id) && !activePlayerIds.has(p.id)).map(p => p.id)],
+        byeHistory: result.updatedByeHistory,
+      }
+    }
+
+    case 'ASSIGN_MATCH': {
+      if (!canGenerateOnCourt(state, action.courtId).valid) return state
+
+      const playingIds = new Set(
+        state.matches
+          .filter(m => m.status === 'playing')
+          .flatMap(m => [...m.team1, ...m.team2]),
+      )
+      const matchPlayerIds = [...action.team1, ...action.team2]
+      if (matchPlayerIds.some(id => playingIds.has(id))) return state
+
+      const matchNumber = state.matches.length + 1
+      const newMatch: Match = {
+        id: crypto.randomUUID(),
+        courtId: action.courtId,
+        team1: action.team1,
+        team2: action.team2,
+        status: 'playing',
+        matchNumber,
+        round: state.currentRound,
+      }
+
+      const courts = state.courts.map(c =>
+        c.id === action.courtId ? { ...c, status: 'occupied' as const } : c,
+      )
+
+      const assignedIds = new Set(matchPlayerIds)
+      const players = state.players.map(p =>
+        assignedIds.has(p.id) ? { ...p, status: 'playing' as const } : p,
+      )
+
+      return {
+        ...state,
+        courts,
+        players,
+        matches: [...state.matches, newMatch],
       }
     }
 

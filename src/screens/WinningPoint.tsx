@@ -95,9 +95,9 @@ export function WinningPoint() {
               padding: '12px 20px',
               borderRadius: 0,
               cursor: 'pointer',
-              backgroundColor: selected === pts && !showCustom ? '#1F9E78' : 'var(--color-surface)',
-              color: selected === pts && !showCustom ? '#F5F2EC' : 'var(--color-text-primary)',
-              border: `1px solid ${selected === pts && !showCustom ? '#1F9E78' : 'var(--color-border)'}`,
+              backgroundColor: selected === pts && !showCustom ? 'var(--color-accent)' : 'transparent',
+              color: selected === pts && !showCustom ? 'var(--color-reverse)' : 'var(--color-text-primary)',
+              border: `1px solid ${selected === pts && !showCustom ? 'var(--color-accent)' : 'var(--color-border)'}`,
             }}
           >
             {pts}
@@ -112,9 +112,9 @@ export function WinningPoint() {
             padding: '12px 20px',
             borderRadius: 0,
             cursor: 'pointer',
-            backgroundColor: showCustom ? '#1F9E78' : 'var(--color-surface)',
-            color: showCustom ? '#F5F2EC' : 'var(--color-text-primary)',
-            border: `1px solid ${showCustom ? '#1F9E78' : 'var(--color-border)'}`,
+            backgroundColor: showCustom ? 'var(--color-accent)' : 'transparent',
+            color: showCustom ? 'var(--color-reverse)' : 'var(--color-text-primary)',
+            border: `1px solid ${showCustom ? 'var(--color-accent)' : 'var(--color-border)'}`,
           }}
         >
           ···

@@ -54,6 +54,8 @@ import {
   areDisjoint,
   generateRound,
   getMatchKey,
+  getMatchOptions,
+  filterMatchOptions,
 } from '../src/domain/matchGenerator'
 
 import {
@@ -63,6 +65,7 @@ import {
   validatePlayerName,
   validateCourtName,
   canProgressFromPlayers,
+  canGenerateOnCourt,
 } from '../src/domain/sessionRules'
 
 import {
@@ -166,6 +169,68 @@ describe('getMatchKey', () => {
     const key1 = getMatchKey(['p1', 'p2'], ['p3', 'p4'])
     const key2 = getMatchKey(['p1', 'p3'], ['p2', 'p4'])
     expect(key1).not.toBe(key2)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 3b: getMatchOptions
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('getMatchOptions', () => {
+  it('excludes players currently in an active match', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8)].map((player, i) =>
+      i < 4 ? { ...player, status: 'playing' as const } : { ...player, status: 'benched' as const },
+    )
+    const activeIds = new Set(['p1', 'p2', 'p3', 'p4'])
+    const options = getMatchOptions(players, 'random-doubles', new Set(), activeIds)
+    expect(options.length).toBeGreaterThan(0)
+    options.forEach(opt => {
+      const ids = [...opt.team1, ...opt.team2]
+      expect(ids.every(id => !activeIds.has(id))).toBe(true)
+    })
+  })
+
+  it('returns at most 4 options by default', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8)].map(pl => ({
+      ...pl,
+      status: 'benched' as const,
+    }))
+    const options = getMatchOptions(players, 'random-doubles', new Set(), new Set())
+    expect(options.length).toBeLessThanOrEqual(4)
+    expect(options.length).toBeGreaterThan(0)
+  })
+
+  it('prefers matchups with more benched players', () => {
+    const players = [
+      { ...p(1), status: 'benched' as const },
+      { ...p(2), status: 'benched' as const },
+      { ...p(3), status: 'benched' as const },
+      { ...p(4), status: 'benched' as const },
+    ]
+    const options = getMatchOptions(players, 'random-doubles', new Set(), new Set())
+    expect(options[0].team1.length + options[0].team2.length).toBe(4)
+  })
+
+  it('returns empty when not enough available players', () => {
+    const players = [p(1), p(2), p(3)].map(pl => ({ ...pl, status: 'benched' as const }))
+    expect(getMatchOptions(players, 'random-doubles', new Set(), new Set())).toHaveLength(0)
+  })
+})
+
+describe('filterMatchOptions', () => {
+  const options = [
+    { team1: ['p1', 'p2'], team2: ['p3', 'p4'], key: 'a' },
+    { team1: ['p1', 'p5'], team2: ['p6', 'p7'], key: 'b' },
+  ]
+
+  it('returns all options when filter is null', () => {
+    expect(filterMatchOptions(options, null)).toHaveLength(2)
+  })
+
+  it('filters to options that include the player', () => {
+    const filtered = filterMatchOptions(options, 'p5')
+    expect(filtered).toHaveLength(1)
+    expect(filtered[0].key).toBe('b')
   })
 })
 
@@ -525,6 +590,12 @@ describe('canProgressFromPlayers', () => {
     expect(canProgressFromPlayers([p(1), p(2), p(3)], 'random-doubles')).toBe(false)
   })
 
+  it('random-doubles: can progress with odd player count (5)', () => {
+    expect(
+      canProgressFromPlayers([p(1), p(2), p(3), p(4), p(5)], 'random-doubles'),
+    ).toBe(true)
+  })
+
   it('fixed-doubles: can progress with 4 players (even)', () => {
     expect(canProgressFromPlayers([p(1), p(2), p(3), p(4)], 'fixed-doubles')).toBe(true)
   })
@@ -536,6 +607,62 @@ describe('canProgressFromPlayers', () => {
   it('cannot progress above 16 players', () => {
     const players = Array.from({ length: 17 }, (_, i) => p(i + 1))
     expect(canProgressFromPlayers(players, 'singles')).toBe(false)
+  })
+})
+
+describe('canGenerateOnCourt', () => {
+  it('allows generation when enough benched players are available', () => {
+    const session = {
+      id: 's1',
+      matchType: 'random-doubles' as const,
+      winningPoint: 21,
+      players: [p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8)].map((player, i) =>
+        i < 4 ? { ...player, status: 'playing' as const } : { ...player, status: 'benched' as const },
+      ),
+      courts: [c(1), c(2)],
+      matches: [
+        {
+          id: 'm1',
+          courtId: 'c1',
+          team1: ['p1', 'p2'],
+          team2: ['p3', 'p4'],
+          status: 'playing' as const,
+          matchNumber: 1,
+          round: 1,
+        },
+      ],
+      currentRound: 1,
+      status: 'active' as const,
+      byeHistory: [],
+    }
+    expect(canGenerateOnCourt(session, 'c2').valid).toBe(true)
+  })
+
+  it('blocks generation when not enough benched players remain', () => {
+    const session = {
+      id: 's1',
+      matchType: 'random-doubles' as const,
+      winningPoint: 21,
+      players: [p(1), p(2), p(3), p(4)].map((player, i) =>
+        i < 3 ? { ...player, status: 'playing' as const } : { ...player, status: 'benched' as const },
+      ),
+      courts: [c(1), c(2)],
+      matches: [
+        {
+          id: 'm1',
+          courtId: 'c1',
+          team1: ['p1', 'p2'],
+          team2: ['p3', 'p4'],
+          status: 'playing' as const,
+          matchNumber: 1,
+          round: 1,
+        },
+      ],
+      currentRound: 1,
+      status: 'active' as const,
+      byeHistory: [],
+    }
+    expect(canGenerateOnCourt(session, 'c2').valid).toBe(false)
   })
 })
 

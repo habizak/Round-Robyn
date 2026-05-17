@@ -16,8 +16,8 @@ export function Badge({ children, accent }: BadgeProps) {
         fontSize: '12px',
         fontFamily: "'JetBrains Mono', monospace",
         fontWeight: 500,
-        backgroundColor: accent ? '#1F9E78' : '#C8C2B4',
-        color: accent ? '#F5F2EC' : '#6B6560',
+        backgroundColor: accent ? 'var(--color-accent)' : 'var(--color-border)',
+        color: accent ? 'var(--color-reverse)' : 'var(--color-text-primary)',
       }}
     >
       {children}

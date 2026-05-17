@@ -289,6 +289,107 @@ export function generateRound(
 
 // ─── generateSingleMatch ─────────────────────────────────────────────────────
 
+export type MatchOption = {
+  team1: string[]
+  team2: string[]
+  key: string
+}
+
+function minPlayersForMatchType(matchType: MatchType): number {
+  return matchType === 'singles' ? 2 : 4
+}
+
+function generateMatchupsForType(players: Player[], matchType: MatchType): [string[], string[]][] {
+  if (matchType === 'singles') return generateSinglesMatchups(players)
+  if (matchType === 'random-doubles') return generateRandomDoublesMatchups(players)
+  return generateFixedDoublesMatchups(players)
+}
+
+function idsFromMatchKey(key: string): string[] {
+  const parts = key.split('||')
+  if (parts.length !== 2) return []
+  return [...parts[0].split('|'), ...parts[1].split('|')].filter(Boolean)
+}
+
+function countPlayCountsFromKeys(players: Player[], usedMatchups: Set<string>): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const p of players) counts.set(p.id, 0)
+  for (const key of usedMatchups) {
+    for (const id of idsFromMatchKey(key)) {
+      if (counts.has(id)) counts.set(id, (counts.get(id) ?? 0) + 1)
+    }
+  }
+  return counts
+}
+
+function scoreMatchup(
+  team1: string[],
+  team2: string[],
+  players: Player[],
+  usedMatchups: Set<string>,
+  playCounts: Map<string, number>,
+): number {
+  const ids = [...team1, ...team2]
+  let score = 0
+  for (const id of ids) {
+    const player = players.find(p => p.id === id)
+    if (player?.status === 'benched') score += 10
+    score -= playCounts.get(id) ?? 0
+  }
+  if (!usedMatchups.has(getMatchKey(team1, team2))) score += 5
+  return score
+}
+
+/**
+ * Returns ranked match options for manual selection.
+ * Only players not in an active match are eligible; benched players are prioritized.
+ */
+export function getMatchOptions(
+  players: Player[],
+  matchType: MatchType,
+  usedMatchups: Set<string>,
+  activePlayerIds: Set<string>,
+  maxOptions = 4,
+): MatchOption[] {
+  const available = players.filter(p => !activePlayerIds.has(p.id))
+  const minPlayers = minPlayersForMatchType(matchType)
+  if (available.length < minPlayers) return []
+
+  const allMatchups = generateMatchupsForType(available, matchType)
+  if (allMatchups.length === 0) return []
+
+  const playCounts = countPlayCountsFromKeys(players, usedMatchups)
+  const scored = allMatchups.map(([team1, team2]) => ({
+    team1,
+    team2,
+    key: getMatchKey(team1, team2),
+    score: scoreMatchup(team1, team2, players, usedMatchups, playCounts),
+  }))
+
+  scored.sort((a, b) => b.score - a.score)
+
+  const seen = new Set<string>()
+  const options: MatchOption[] = []
+  for (const item of scored) {
+    if (seen.has(item.key)) continue
+    seen.add(item.key)
+    options.push({ team1: item.team1, team2: item.team2, key: item.key })
+    if (options.length >= maxOptions) break
+  }
+
+  return options
+}
+
+export function filterMatchOptions(
+  options: MatchOption[],
+  playerId: string | null,
+): MatchOption[] {
+  if (!playerId) return options
+  return options.filter(
+    o => o.team1.includes(playerId) || o.team2.includes(playerId),
+  )
+}
+
 export function generateSingleMatch(
   players: Player[],
   court: Court,

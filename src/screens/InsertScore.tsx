@@ -87,7 +87,6 @@ export function InsertScore() {
       <div
         style={{
           padding: '16px',
-          backgroundColor: 'var(--color-surface)',
           border: '1px solid var(--color-border)',
           marginBottom: '24px',
         }}

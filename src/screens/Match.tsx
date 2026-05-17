@@ -1,11 +1,42 @@
-import { useState } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSession, getPlayerName, getCompletedMatches, getBenchedPlayers } from '../hooks/useSession'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { Badge } from '../components/Badge'
 import { Modal } from '../components/Modal'
-import type { Match as MatchType, Player } from '../types'
+import { ASSETS } from '../constants/assets'
+import { canGenerateOnCourt } from '../domain/sessionRules'
+import type { Match as MatchType, Player, Court } from '../types'
+
+const pageFont = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
+
+function SectionHeader({ icon, title }: { icon: ReactNode; title: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        marginBottom: '12px',
+      }}
+    >
+      {icon}
+      <h2
+        style={{
+          fontFamily: pageFont,
+          fontSize: '16px',
+          fontWeight: 700,
+          color: 'var(--color-text-primary)',
+          margin: 0,
+        }}
+      >
+        {title}
+      </h2>
+    </div>
+  )
+}
+
 
 export function Match() {
   const { session, dispatch } = useSession()
@@ -14,6 +45,7 @@ export function Match() {
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [filterModalOpen, setFilterModalOpen] = useState(false)
   const [filterPlayerId, setFilterPlayerId] = useState<string | null>(null)
+  const [generateError, setGenerateError] = useState('')
 
   const tab = searchParams.get('tab') === 'history' ? 'history' : 'match'
 
@@ -26,19 +58,23 @@ export function Match() {
   }
 
   const activeCourts = session.courts
-  const emptyCourtsCount = activeCourts.filter(c => c.status === 'empty').length
-  const allOccupied = activeCourts.every(c => c.status === 'occupied')
-
   const activeMatches = session.matches.filter(m => m.status === 'playing')
   const completedMatches = getCompletedMatches(session)
   const benchedPlayers = getBenchedPlayers(session)
+  const nextMatchNumber = session.matches.length + 1
 
   function getMatchForCourt(courtId: string): MatchType | undefined {
     return activeMatches.find(m => m.courtId === courtId)
   }
 
   function handleGenerateForCourt(courtId: string) {
-    dispatch({ type: 'GENERATE_NEXT_MATCH', courtId })
+    const check = canGenerateOnCourt(session, courtId)
+    if (!check.valid) {
+      setGenerateError(check.message ?? 'Cannot generate a match right now.')
+      return
+    }
+    setGenerateError('')
+    navigate(`/match/generate/${courtId}`)
   }
 
   function handleAddScore(matchId: string) {
@@ -50,231 +86,349 @@ export function Match() {
     navigate('/')
   }
 
+  const availableCourt = activeCourts.find(
+    c => !getMatchForCourt(c.id) && canGenerateOnCourt(session, c.id).valid,
+  )
+
   const filteredCompleted = filterPlayerId
     ? completedMatches.filter(
-        m => m.team1.includes(filterPlayerId) || m.team2.includes(filterPlayerId)
+        m => m.team1.includes(filterPlayerId) || m.team2.includes(filterPlayerId),
       )
     : completedMatches
+
+  const tabStyle = (active: boolean): CSSProperties => ({
+    fontFamily: pageFont,
+    fontSize: '16px',
+    fontWeight: active ? 700 : 400,
+    padding: '4px 0',
+    marginRight: '20px',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: active ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+  })
+
+  function renderActiveMatchCard(court: Court, match: MatchType) {
+    const team1Ids = match.team1
+    const team2Ids = match.team2
+
+    return (
+      <div key={court.id} style={{ marginBottom: '20px' }}>
+        <p
+          style={{
+            fontFamily: pageFont,
+            fontSize: '14px',
+            fontWeight: 600,
+            color: 'var(--color-text-primary)',
+            marginBottom: '8px',
+          }}
+        >
+          {court.name}
+        </p>
+        <Card dark rounded>
+          <p
+            style={{
+              fontFamily: pageFont,
+              fontSize: '14px',
+              fontWeight: 700,
+              color: 'var(--color-reverse)',
+              textAlign: 'center',
+              marginBottom: '20px',
+            }}
+          >
+            Match {match.matchNumber}
+          </p>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px',
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                minWidth: 0,
+              }}
+            >
+              {team1Ids.map(id => (
+                <span
+                  key={id}
+                  style={{
+                    fontFamily: pageFont,
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    color: 'var(--color-reverse)',
+                    lineHeight: 1.25,
+                  }}
+                >
+                  {getPlayerName(session, id)}
+                </span>
+              ))}
+            </div>
+            <div style={{ flexShrink: 0 }}>
+              <Button variant="primary" pill onClick={() => handleAddScore(match.id)}>
+                + Add Score
+              </Button>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                alignItems: 'flex-end',
+                textAlign: 'right',
+                minWidth: 0,
+              }}
+            >
+              {team2Ids.map(id => (
+                <span
+                  key={id}
+                  style={{
+                    fontFamily: pageFont,
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    color: 'var(--color-reverse)',
+                    lineHeight: 1.25,
+                  }}
+                >
+                  {getPlayerName(session, id)}
+                </span>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  function renderEmptyCourtCard(court: Court) {
+    const generateCheck = canGenerateOnCourt(session, court.id)
+
+    return (
+      <div key={court.id} style={{ marginBottom: '20px' }}>
+        <p
+          style={{
+            fontFamily: pageFont,
+            fontSize: '14px',
+            fontWeight: 600,
+            color: 'var(--color-text-primary)',
+            marginBottom: '8px',
+          }}
+        >
+          {court.name}
+        </p>
+        <Card dashedAccent rounded>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '16px',
+            }}
+          >
+            <p
+              style={{
+                fontFamily: pageFont,
+                fontSize: '14px',
+                fontWeight: 700,
+                color: 'var(--color-text-secondary)',
+                textAlign: 'center',
+                margin: 0,
+              }}
+            >
+              Match {nextMatchNumber}
+            </p>
+            {generateCheck.valid ? (
+              <Button variant="primary" pill onClick={() => handleGenerateForCourt(court.id)}>
+                + Generate Match
+              </Button>
+            ) : (
+              <p
+                style={{
+                  fontFamily: pageFont,
+                  fontSize: '13px',
+                  color: 'var(--color-text-secondary)',
+                  textAlign: 'center',
+                  margin: 0,
+                  maxWidth: '240px',
+                }}
+              >
+                {generateCheck.message ?? 'Waiting for a court to free up'}
+              </p>
+            )}
+          </div>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div
       style={{
         maxWidth: '420px',
         margin: '0 auto',
-        padding: '24px',
+        padding: '16px 20px 32px',
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
+        boxSizing: 'border-box',
       }}
     >
-      {/* Header */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '16px',
+          marginBottom: '24px',
         }}
       >
-        <h1
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '24px',
-            fontWeight: 700,
-            color: 'var(--color-text-primary)',
-          }}
-        >
-          Matcha
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <button type="button" onClick={() => setTab('match')} style={tabStyle(tab === 'match')}>
+            Match
+          </button>
+          <button type="button" onClick={() => setTab('history')} style={tabStyle(tab === 'history')}>
+            History
+          </button>
+        </div>
         <button
+          type="button"
           onClick={() => setShowEndConfirm(true)}
           style={{
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            color: 'var(--color-text-secondary)',
-            fontSize: '20px',
-            fontFamily: "'JetBrains Mono', monospace",
+            color: 'var(--color-text-primary)',
             padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
           }}
           title="Settings"
         >
-          ⚙
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path
+              d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M19.4 15a7.97 7.97 0 0 0 .1-6l1.5-1.2-2-3.4-1.8.7a8.06 8.06 0 0 0-5.2-3L12 1h-4l-.5 2.1a8.06 8.06 0 0 0-5.2 3l-1.8-.7-2 3.4L4.5 9a7.97 7.97 0 0 0 .1 6l-1.5 1.2 2 3.4 1.8-.7a8.06 8.06 0 0 0 5.2 3L8 23h4l.5-2.1a8.06 8.06 0 0 0 5.2-3l1.8.7 2-3.4-1.5-1.2Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+          </svg>
         </button>
-      </div>
-
-      {/* Tab bar */}
-      <div
-        style={{
-          display: 'flex',
-          borderBottom: '1px solid var(--color-border)',
-          marginBottom: '20px',
-        }}
-      >
-        {(['match', 'history'] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '13px',
-              fontWeight: tab === t ? 700 : 500,
-              padding: '8px 16px',
-              background: 'none',
-              border: 'none',
-              borderBottom: tab === t ? '2px solid var(--color-accent)' : '2px solid transparent',
-              cursor: 'pointer',
-              color: tab === t ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
-              marginBottom: '-1px',
-            }}
-          >
-            {t === 'match' ? 'Match' : 'History'}
-          </button>
-        ))}
       </div>
 
       {tab === 'match' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          {/* Available courts count */}
-          <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Badge accent={emptyCourtsCount > 0}>{emptyCourtsCount} available</Badge>
-            <span
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '12px',
-                color: 'var(--color-text-secondary)',
-              }}
-            >
-              courts
-            </span>
-          </div>
-
-          {/* Court cards */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {activeCourts.map(court => {
-              const match = getMatchForCourt(court.id)
-              if (match) {
-                // Active match
-                const team1Names = match.team1.map(id => getPlayerName(session, id)).join(' & ')
-                const team2Names = match.team2.map(id => getPlayerName(session, id)).join(' & ')
-                return (
-                  <Card key={court.id} dark>
-                    <div style={{ marginBottom: '8px' }}>
-                      <span
-                        style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '11px',
-                          color: '#8C8880',
-                          display: 'block',
-                          marginBottom: '2px',
-                        }}
-                      >
-                        {court.name} · Match #{match.matchNumber}
-                      </span>
-                      <span
-                        style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '14px',
-                          fontWeight: 700,
-                          color: '#F5F2EC',
-                        }}
-                      >
-                        {team1Names}
-                      </span>
-                      <span
-                        style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '13px',
-                          color: '#8C8880',
-                          margin: '0 8px',
-                        }}
-                      >
-                        vs
-                      </span>
-                      <span
-                        style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '14px',
-                          fontWeight: 700,
-                          color: '#F5F2EC',
-                        }}
-                      >
-                        {team2Names}
-                      </span>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      onClick={() => handleAddScore(match.id)}
-                    >
-                      + Add Score
-                    </Button>
-                  </Card>
-                )
-              } else {
-                // Empty court
-                return (
-                  <Card key={court.id} dashed>
-                    <div style={{ marginBottom: '8px' }}>
-                      <span
-                        style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '12px',
-                          color: 'var(--color-text-secondary)',
-                        }}
-                      >
-                        {court.name}
-                      </span>
-                    </div>
-                    {allOccupied ? (
-                      <span
-                        style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '12px',
-                          color: 'var(--color-text-secondary)',
-                        }}
-                      >
-                        Waiting for a court to free up
-                      </span>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleGenerateForCourt(court.id)}
-                      >
-                        + Generate Match
-                      </Button>
-                    )}
-                  </Card>
-                )
-              }
-            })}
-          </div>
-
-          {/* Benched players */}
-          {benchedPlayers.length > 0 && (
-            <div style={{ marginTop: '20px' }}>
-              <h3
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '12px',
-                  color: 'var(--color-text-secondary)',
-                  marginBottom: '8px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                Benched
-              </h3>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {benchedPlayers.map((p: Player) => (
-                  <Badge key={p.id}>{p.name}</Badge>
-                ))}
+          {availableCourt && (
+            <section style={{ marginBottom: '28px' }}>
+              <SectionHeader
+                icon={
+                  <img
+                    src={ASSETS.iconAvailableCourt}
+                    alt=""
+                    width={20}
+                    height={20}
+                    style={{ display: 'block', flexShrink: 0 }}
+                  />
+                }
+                title="Available Court"
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <img
+                  src={ASSETS.iconCourt}
+                  alt=""
+                  width={48}
+                  height={48}
+                  style={{ display: 'block', marginBottom: '8px' }}
+                />
+                <span
+                  style={{
+                    fontFamily: pageFont,
+                    fontSize: '14px',
+                    color: 'var(--color-text-primary)',
+                  }}
+                >
+                  {availableCourt.name}
+                </span>
               </div>
-            </div>
+            </section>
           )}
 
-          {/* End Game */}
-          <div style={{ marginTop: 'auto', paddingTop: '24px' }}>
-            <Button variant="secondary" fullWidth onClick={() => setShowEndConfirm(true)}>
+          {activeCourts.length > 0 && (
+            <section style={{ marginBottom: '28px' }}>
+              <SectionHeader
+                icon={
+                  <img
+                    src={ASSETS.iconCourtSmall}
+                    alt=""
+                    width={20}
+                    height={20}
+                    style={{ display: 'block', flexShrink: 0 }}
+                  />
+                }
+                title="Courts"
+              />
+              {activeCourts.map(court => {
+                const match = getMatchForCourt(court.id)
+                return match ? renderActiveMatchCard(court, match) : renderEmptyCourtCard(court)
+              })}
+              {generateError && (
+                <p
+                  style={{
+                    fontFamily: pageFont,
+                    fontSize: '13px',
+                    color: 'var(--color-error)',
+                    marginTop: '8px',
+                  }}
+                >
+                  {generateError}
+                </p>
+              )}
+            </section>
+          )}
+
+          {benchedPlayers.length > 0 && (
+            <section style={{ marginBottom: '24px' }}>
+              <SectionHeader
+                icon={
+                  <img
+                    src={ASSETS.iconBenched}
+                    alt=""
+                    width={20}
+                    height={20}
+                    style={{ display: 'block', flexShrink: 0 }}
+                  />
+                }
+                title="Benched"
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {benchedPlayers.map((p: Player) => (
+                  <span
+                    key={p.id}
+                    style={{
+                      fontFamily: pageFont,
+                      fontSize: '15px',
+                      color: 'var(--color-text-primary)',
+                    }}
+                  >
+                    {p.name}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
+            <Button variant="outline" fullWidth pill onClick={() => setShowEndConfirm(true)}>
               End Game
             </Button>
           </div>
@@ -293,8 +447,8 @@ export function Match() {
           >
             <span
               style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '12px',
+                fontFamily: pageFont,
+                fontSize: '14px',
                 color: 'var(--color-text-secondary)',
               }}
             >
@@ -314,18 +468,17 @@ export function Match() {
                 marginBottom: '12px',
               }}
             >
-              <Badge accent>
-                {getPlayerName(session, filterPlayerId)}
-              </Badge>
+              <Badge accent>{getPlayerName(session, filterPlayerId)}</Badge>
               <button
+                type="button"
                 onClick={() => setFilterPlayerId(null)}
                 style={{
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
                   color: 'var(--color-text-secondary)',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '12px',
+                  fontFamily: pageFont,
+                  fontSize: '13px',
                 }}
               >
                 × clear
@@ -336,8 +489,8 @@ export function Match() {
           {filteredCompleted.length === 0 ? (
             <p
               style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '14px',
+                fontFamily: pageFont,
+                fontSize: '15px',
                 color: 'var(--color-text-secondary)',
                 textAlign: 'center',
                 paddingTop: '48px',
@@ -346,7 +499,7 @@ export function Match() {
               No matches completed yet.
             </p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[...filteredCompleted].reverse().map(m => {
                 const team1Names = m.team1.map(id => getPlayerName(session, id)).join(' & ')
                 const team2Names = m.team2.map(id => getPlayerName(session, id)).join(' & ')
@@ -357,67 +510,53 @@ export function Match() {
                 const team2Score = team1Won ? (m.score?.team1Points ?? 0) : session.winningPoint
 
                 return (
-                  <Card key={m.id} dark>
-                    <div
+                  <Card key={m.id} dark rounded>
+                    <p
                       style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        marginBottom: '6px',
+                        fontFamily: pageFont,
+                        fontSize: '12px',
+                        color: 'var(--color-text-secondary)',
+                        marginBottom: '8px',
                       }}
                     >
-                      <span
-                        style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '11px',
-                          color: '#8C8880',
-                        }}
-                      >
-                        {courtName} · Match #{m.matchNumber}
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: '13px',
-                        marginBottom: '4px',
-                      }}
-                    >
+                      {courtName} · Match {m.matchNumber}
+                    </p>
+                    <div style={{ fontFamily: pageFont, fontSize: '14px', marginBottom: '4px' }}>
                       <span
                         style={{
                           fontWeight: team1Won ? 700 : 400,
-                          color: team1Won ? '#1F9E78' : '#8C8880',
+                          color: team1Won ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                         }}
                       >
                         {team1Names}
                       </span>
-                      <span style={{ color: '#8C8880', margin: '0 8px' }}>vs</span>
+                      <span style={{ color: 'var(--color-text-secondary)', margin: '0 8px' }}>vs</span>
                       <span
                         style={{
                           fontWeight: !team1Won ? 700 : 400,
-                          color: !team1Won ? '#1F9E78' : '#8C8880',
+                          color: !team1Won ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                         }}
                       >
                         {team2Names}
                       </span>
                     </div>
-                    {m.score && (
+                    {m.score ? (
                       <span
                         style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '13px',
-                          color: '#F5F2EC',
+                          fontFamily: pageFont,
+                          fontSize: '14px',
+                          color: 'var(--color-reverse)',
                           fontWeight: 700,
                         }}
                       >
                         {team1Score} – {team2Score}
                       </span>
-                    )}
-                    {!m.score && (
+                    ) : (
                       <span
                         style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '12px',
-                          color: '#8C8880',
+                          fontFamily: pageFont,
+                          fontSize: '13px',
+                          color: 'var(--color-text-secondary)',
                         }}
                       >
                         No score recorded
@@ -431,15 +570,10 @@ export function Match() {
         </div>
       )}
 
-      {/* End confirm modal */}
-      <Modal
-        open={showEndConfirm}
-        onClose={() => setShowEndConfirm(false)}
-        title="End Game"
-      >
+      <Modal open={showEndConfirm} onClose={() => setShowEndConfirm(false)} title="End Game">
         <p
           style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: pageFont,
             fontSize: '14px',
             color: 'var(--color-text-secondary)',
             marginBottom: '20px',
@@ -451,34 +585,30 @@ export function Match() {
           <Button variant="ghost" onClick={() => setShowEndConfirm(false)}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleEndSession}>
+          <Button variant="primary" pill onClick={handleEndSession}>
             End Session
           </Button>
         </div>
       </Modal>
 
-      {/* Filter modal */}
-      <Modal
-        open={filterModalOpen}
-        onClose={() => setFilterModalOpen(false)}
-        title="Filter by Player"
-      >
+      <Modal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter by Player">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {session.players.map(p => (
             <button
               key={p.id}
+              type="button"
               onClick={() => {
                 setFilterPlayerId(p.id)
                 setFilterModalOpen(false)
               }}
               style={{
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: pageFont,
                 fontSize: '14px',
                 padding: '10px 12px',
-                background: filterPlayerId === p.id ? '#1F9E78' : 'var(--color-bg)',
-                color: filterPlayerId === p.id ? '#F5F2EC' : 'var(--color-text-primary)',
+                background: filterPlayerId === p.id ? 'var(--color-accent)' : 'var(--color-bg)',
+                color: filterPlayerId === p.id ? 'var(--color-reverse)' : 'var(--color-text-primary)',
                 border: '1px solid var(--color-border)',
-                borderRadius: 0,
+                borderRadius: 8,
                 cursor: 'pointer',
                 textAlign: 'left',
               }}

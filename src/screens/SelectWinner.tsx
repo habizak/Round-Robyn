@@ -80,7 +80,8 @@ export function SelectWinner() {
               style={{
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: '11px',
-                color: 'var(--color-text-secondary)',
+                color: selectedTeam === 'team1' ? 'var(--color-reverse)' : 'var(--color-text-secondary)',
+                opacity: selectedTeam === 'team1' ? 0.85 : 1,
                 marginBottom: '4px',
               }}
             >
@@ -91,7 +92,7 @@ export function SelectWinner() {
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: '14px',
                 fontWeight: 700,
-                color: selectedTeam === 'team1' ? 'var(--color-accent)' : 'var(--color-text-primary)',
+                color: selectedTeam === 'team1' ? 'var(--color-reverse)' : 'var(--color-text-primary)',
               }}
             >
               {team1Names}
@@ -107,7 +108,8 @@ export function SelectWinner() {
               style={{
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: '11px',
-                color: 'var(--color-text-secondary)',
+                color: selectedTeam === 'team2' ? 'var(--color-reverse)' : 'var(--color-text-secondary)',
+                opacity: selectedTeam === 'team2' ? 0.85 : 1,
                 marginBottom: '4px',
               }}
             >
@@ -118,7 +120,7 @@ export function SelectWinner() {
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: '14px',
                 fontWeight: 700,
-                color: selectedTeam === 'team2' ? 'var(--color-accent)' : 'var(--color-text-primary)',
+                color: selectedTeam === 'team2' ? 'var(--color-reverse)' : 'var(--color-text-primary)',
               }}
             >
               {team2Names}

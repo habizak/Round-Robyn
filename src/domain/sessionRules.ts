@@ -1,4 +1,4 @@
-import type { MatchType, Player, Court } from '../types'
+import type { MatchType, Player, Court, Session, Match } from '../types'
 import { MAX_PLAYERS, MAX_COURTS, MIN_PLAYERS_SINGLES, MIN_PLAYERS_DOUBLES } from './constants'
 
 type ValidationResult = { valid: boolean; message?: string }
@@ -72,4 +72,48 @@ export function validateCourtName(name: string, existing: Court[]): ValidationRe
 
 export function canProgressFromPlayers(players: Player[], matchType: MatchType): boolean {
   return validatePlayerCount(players.length, matchType).valid
+}
+
+function minPlayersPerMatch(matchType: MatchType): number {
+  return matchType === 'singles' ? MIN_PLAYERS_SINGLES : MIN_PLAYERS_DOUBLES
+}
+
+export function getActivePlayerIds(matches: Match[]): Set<string> {
+  return new Set(
+    matches
+      .filter(m => m.status === 'playing')
+      .flatMap(m => [...m.team1, ...m.team2]),
+  )
+}
+
+export function hasPlayingMatchOnCourt(matches: Match[], courtId: string): boolean {
+  return matches.some(m => m.courtId === courtId && m.status === 'playing')
+}
+
+export function areAllCourtsInUse(session: Session): boolean {
+  if (session.courts.length === 0) return false
+  return session.courts.every(c => hasPlayingMatchOnCourt(session.matches, c.id))
+}
+
+export function canGenerateOnCourt(session: Session, courtId: string): ValidationResult {
+  const court = session.courts.find(c => c.id === courtId)
+  if (!court) {
+    return { valid: false, message: 'Court not found.' }
+  }
+  if (hasPlayingMatchOnCourt(session.matches, courtId)) {
+    return { valid: false, message: 'A match is already in progress on this court.' }
+  }
+  if (areAllCourtsInUse(session)) {
+    return { valid: false, message: 'All courts are in use. Complete a match first.' }
+  }
+  const benchedCount = session.players.filter(p => p.status === 'benched').length
+  const min = minPlayersPerMatch(session.matchType)
+  if (benchedCount < min) {
+    const label = session.matchType === 'singles' ? 'singles' : 'doubles'
+    return {
+      valid: false,
+      message: `Need at least ${min} benched players for a ${label} match.`,
+    }
+  }
+  return { valid: true }
 }

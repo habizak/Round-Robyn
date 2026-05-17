@@ -47,8 +47,8 @@ export function Players() {
       setNavError(`At least ${minPlayers} players required.`)
       return
     }
-    if (isDoubles && players.length % 2 !== 0) {
-      setNavError('Need an even number of players for doubles.')
+    if (isFixedDoubles && players.length % 2 !== 0) {
+      setNavError('Need an even number of players for fixed doubles.')
       return
     }
     if (isFixedDoubles) {
@@ -141,7 +141,6 @@ export function Players() {
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '8px 12px',
-              backgroundColor: 'var(--color-surface)',
               border: '1px solid var(--color-border)',
             }}
           >
@@ -198,7 +197,6 @@ export function Players() {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '8px 12px',
-                    backgroundColor: 'var(--color-surface)',
                     border: '1px solid var(--color-accent)',
                     marginBottom: '4px',
                     fontFamily: "'JetBrains Mono', monospace",
@@ -315,7 +313,6 @@ function PairingForm({
       style={{
         padding: '12px',
         border: '1px dashed var(--color-border)',
-        backgroundColor: 'var(--color-surface)',
         marginBottom: '8px',
       }}
     >

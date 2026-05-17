@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../hooks/useSession'
 import { Button } from '../components/Button'
+import { AppLogo } from '../components/AppLogo'
+
+const homeFont = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
 
 export function Home() {
   const { session, dispatch } = useSession()
@@ -27,44 +30,67 @@ export function Home() {
       style={{
         maxWidth: '420px',
         margin: '0 auto',
-        padding: '24px',
+        padding: '24px 24px 40px',
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ marginBottom: '48px' }}>
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+        }}
+      >
+        <AppLogo size={160} />
         <h1
           style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: homeFont,
             fontSize: '32px',
             fontWeight: 700,
             color: 'var(--color-text-primary)',
+            marginTop: '20px',
             marginBottom: '8px',
+            letterSpacing: '-0.02em',
           }}
         >
           Matcha
         </h1>
         <p
           style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '14px',
-            color: 'var(--color-text-secondary)',
+            fontFamily: homeFont,
+            fontSize: '16px',
+            fontWeight: 400,
+            color: 'var(--color-text-primary)',
+            lineHeight: 1.4,
+            maxWidth: '280px',
           }}
         >
           Your friendly, simple match generator.
         </p>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '12px',
+          width: '100%',
+        }}
+      >
         {!hasActiveSession ? (
-          <Button variant="primary" fullWidth onClick={handleGenerateNew}>
+          <Button variant="primary" fullWidth pill onClick={handleGenerateNew}>
             Generate Matches
           </Button>
         ) : (
           <>
-            <Button variant="secondary" fullWidth onClick={handleResume}>
+            <Button variant="primary" fullWidth pill onClick={handleResume}>
               Resume Session
             </Button>
             <Button variant="ghost" fullWidth onClick={handleNewSession}>

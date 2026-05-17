@@ -9,6 +9,7 @@ import { Court } from './screens/Court'
 import { Match } from './screens/Match'
 import { SelectWinner } from './screens/SelectWinner'
 import { InsertScore } from './screens/InsertScore'
+import { GenerateMatch } from './screens/GenerateMatch'
 
 function ActiveSessionRedirect() {
   const { session } = useSession()
@@ -37,6 +38,7 @@ function AppRoutes() {
         <Route path="/setup/winning-point" element={<WinningPoint />} />
         <Route path="/setup/court" element={<Court />} />
         <Route path="/match" element={<Match />} />
+        <Route path="/match/generate/:courtId" element={<GenerateMatch />} />
         <Route path="/match/score/:matchId/winner" element={<SelectWinner />} />
         <Route path="/match/score/:matchId/score" element={<InsertScore />} />
         <Route path="*" element={<Navigate to="/" />} />
