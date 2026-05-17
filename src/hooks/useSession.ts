@@ -170,7 +170,10 @@ function sessionReducer(state: Session, action: Action): Session {
       if (!canGenerateOnCourt(state, action.courtId).valid) return state
 
       const court = state.courts.find(c => c.id === action.courtId)!
-      const benchedPlayers = state.players.filter(p => p.status === 'benched')
+      const activePlayerIds = new Set(
+        state.matches.filter(m => m.status === 'playing').flatMap(m => [...m.team1, ...m.team2])
+      )
+      const benchedPlayers = state.players.filter(p => !activePlayerIds.has(p.id))
       const usedMatchups = getUsedMatchups(state.matches)
       const matchNumber = state.matches.length + 1
 
@@ -305,5 +308,10 @@ export function getCompletedMatches(session: Session): Match[] {
 }
 
 export function getBenchedPlayers(session: Session): Player[] {
-  return session.players.filter(p => p.status === 'benched')
+  const playingIds = new Set(
+    session.matches
+      .filter(m => m.status === 'playing')
+      .flatMap(m => [...m.team1, ...m.team2])
+  )
+  return session.players.filter(p => !playingIds.has(p.id))
 }

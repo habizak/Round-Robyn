@@ -277,7 +277,7 @@ export function Match() {
                     style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
                   >
                     <img
-                      src="/icon_court-small.png"
+                      src="/icon_court.png"
                       alt={court.name}
                       style={{ width: '56px', height: '56px', objectFit: 'contain' }}
                     />
@@ -306,7 +306,7 @@ export function Match() {
               marginBottom: '12px',
             }}
           >
-            <img src="/icon_court.png" alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle', marginRight: '6px' }} />Courts
+            <img src="/icon_court-small.png" alt="" style={{ width: '16px', height: '16px', objectFit: 'contain', verticalAlign: 'middle', marginRight: '6px' }} />Courts
           </div>
 
           <div>
