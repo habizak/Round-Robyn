@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
-import { Analytics } from '@vercel/analytics/react'
 import { SessionProvider, useSession } from './hooks/useSession'
 import { Home } from './screens/Home'
 import { MatchType } from './screens/MatchType'
@@ -54,7 +53,6 @@ function App() {
       <SessionProvider>
         <AppRoutes />
       </SessionProvider>
-      <Analytics />
     </BrowserRouter>
   )
 }
