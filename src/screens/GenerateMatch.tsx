@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSession, getPlayerName, getPlayerMatchCounts } from '../hooks/useSession'
 import { Button } from '../components/Button'
 import { Modal } from '../components/Modal'
+import { SetupScreenLayout } from '../components/SetupScreenLayout'
 import {
   filterMatchOptions,
   generateMatchKey,
@@ -46,72 +47,59 @@ function MatchOptionPicker({
   filteredOptions,
   allScoredOptions,
   session,
-  onSubmit,
+  selectedKey,
+  onSelect,
 }: {
   filteredOptions: MatchOption[]
   allScoredOptions: MatchOption[]
   session: Session
-  onSubmit: (option: MatchOption) => void
+  selectedKey: string | null
+  onSelect: (key: string | null) => void
 }) {
   const [page, setPage] = useState(0)
-  const [selectedKey, setSelectedKey] = useState<string | null>(null)
 
   const visibleOptions = filteredOptions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
   const canRegenerate = filteredOptions.length > PAGE_SIZE
-  const selectedOption = visibleOptions.find(o => o.key === selectedKey) ?? null
 
   function handleRegenerate() {
     const nextPage = (page + 1) * PAGE_SIZE < filteredOptions.length ? page + 1 : 0
     setPage(nextPage)
-    setSelectedKey(null)
+    onSelect(null)
   }
 
   return (
-    <>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {visibleOptions.length === 0 ? (
-          <p
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '14px',
-              color: '#9a9a9a',
-              textAlign: 'center',
-              marginTop: '24px',
-            }}
-          >
-            {allScoredOptions.length === 0
-              ? 'No match options available right now.'
-              : 'No options match this filter.'}
-          </p>
-        ) : (
-          visibleOptions.map(option => (
-            <MatchOptionCard
-              key={option.key}
-              option={option}
-              session={session}
-              selected={selectedOption?.key === option.key}
-              onSelect={() => setSelectedKey(option.key)}
-            />
-          ))
-        )}
-      </div>
-
-      <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {canRegenerate && (
-          <Button variant="outline-pill" fullWidth onClick={handleRegenerate}>
-            ↻ Re-generate
-          </Button>
-        )}
-        <Button
-          variant="primary"
-          fullWidth
-          disabled={!selectedOption}
-          onClick={() => selectedOption && onSubmit(selectedOption)}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {visibleOptions.length === 0 ? (
+        <p
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '14px',
+            color: '#9a9a9a',
+            textAlign: 'center',
+            marginTop: '24px',
+          }}
         >
-          Submit
+          {allScoredOptions.length === 0
+            ? 'No match options available right now.'
+            : 'No options match this filter.'}
+        </p>
+      ) : (
+        visibleOptions.map(option => (
+          <MatchOptionCard
+            key={option.key}
+            option={option}
+            session={session}
+            selected={selectedKey === option.key}
+            onSelect={() => onSelect(option.key)}
+          />
+        ))
+      )}
+      {canRegenerate && (
+        <Button variant="outline-pill" fullWidth onClick={handleRegenerate}>
+          ↻ Re-generate
         </Button>
-      </div>
-    </>
+      )}
+    </div>
   )
 }
 
@@ -162,6 +150,7 @@ export function GenerateMatch() {
   const navigate = useNavigate()
   const [filterModalOpen, setFilterModalOpen] = useState(false)
   const [filterPlayerIds, setFilterPlayerIds] = useState<string[]>([])
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
 
   const court = session.courts.find(c => c.id === courtId)
   const canGenerate = courtId ? canGenerateOnCourt(session, courtId) : { valid: false }
@@ -192,19 +181,25 @@ export function GenerateMatch() {
 
   const optionPickerKey = `${filterPlayerIds.join(',')}|${allScoredOptions.map(o => o.key).join(',')}`
 
+  useEffect(() => {
+    setSelectedKey(null)
+  }, [optionPickerKey])
+
+  const selectedOption = filteredOptions.find(o => o.key === selectedKey) ?? null
+
   function toggleFilter(id: string) {
     setFilterPlayerIds(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     )
   }
 
-  function handleSubmit(option: MatchOption) {
-    if (!courtId) return
+  function handleSubmit() {
+    if (!courtId || !selectedOption) return
     dispatch({
       type: 'ASSIGN_MATCH',
       courtId,
-      team1: option.team1,
-      team2: option.team2,
+      team1: selectedOption.team1,
+      team2: selectedOption.team2,
     })
     navigate('/match')
   }
@@ -214,21 +209,18 @@ export function GenerateMatch() {
   const benchedPlayers = session.players.filter(p => p.status === 'benched')
 
   return (
-    <div
-      style={{
-        maxWidth: '420px',
-        margin: '0 auto',
-        padding: '24px',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        boxSizing: 'border-box',
-      }}
+    <SetupScreenLayout
+      backButton={(
+        <button style={backNavStyle} onClick={() => navigate('/match')}>
+          ‹ Back
+        </button>
+      )}
+      footer={(
+        <Button variant="primary" fullWidth disabled={!selectedOption} onClick={handleSubmit}>
+          Submit
+        </Button>
+      )}
     >
-      <button style={backNavStyle} onClick={() => navigate('/match')}>
-        ‹ Back
-      </button>
-
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
@@ -314,7 +306,8 @@ export function GenerateMatch() {
         filteredOptions={filteredOptions}
         allScoredOptions={allScoredOptions}
         session={session}
-        onSubmit={handleSubmit}
+        selectedKey={selectedKey}
+        onSelect={setSelectedKey}
       />
 
       <Modal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter by Player">
@@ -351,6 +344,6 @@ export function GenerateMatch() {
           </div>
         )}
       </Modal>
-    </div>
+    </SetupScreenLayout>
   )
 }
