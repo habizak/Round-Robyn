@@ -992,6 +992,306 @@ Benched: Razak
 ---
 ---
 
+# Flow J — Mixed Mode
+## 6 players · 2 courts · Mixed · Winning point 11
+
+**Personas:** Hafiz, Razak, Jojo, Khairi, Noni, Remy
+
+---
+
+## J-0 · Home
+
+| | |
+|---|---|
+| **Step** | Open app (no existing session) |
+| **Screen** | `/` |
+| **Expected State** | Home screen. `Generate Matches` button visible. No resume option. |
+| **Assert** | Session status = `setup`. No active session in localStorage. |
+
+---
+
+## J-1 · Match Type — Select Mixed
+
+| | |
+|---|---|
+| **Step** | Tap `Generate Matches` |
+| **Screen** | `/setup/match-type` |
+| **Expected State** | Four cards visible: Singles, Fixed Doubles, Random Doubles, Mixed. `Players →` disabled. |
+| **Assert** | Mixed card exists. No card is pre-selected. CTA disabled. |
+
+| | |
+|---|---|
+| **Step** | Tap **Mixed** card |
+| **Expected State** | Mixed card gets active left border. `Players →` becomes enabled. |
+| **Assert** | `session.mode = 'mixed'`. Only Mixed card selected. Other cards unselected. |
+
+---
+
+## J-2 · Players — Minimum Validation
+
+| | |
+|---|---|
+| **Step** | Tap `Players →` |
+| **Screen** | `/setup/players` |
+| **Expected State** | Empty list. `Winning Point →` disabled. **No pairing step at any point in this flow.** |
+| **Assert** | Pairing UI never shown during Mixed setup. |
+
+| | |
+|---|---|
+| **Step** | Add `Hafiz`, `Razak`, `Jojo` (3 players) |
+| **Expected State** | Player count = 3. CTA **disabled**. |
+| **Assert** | Mixed mode requires min 4. Error shown or CTA remains disabled. |
+
+| | |
+|---|---|
+| **Step** | Add `Khairi` (4 players) |
+| **Expected State** | CTA **enabled**. |
+| **Assert** | Player count = 4. Valid for Mixed. |
+
+| | |
+|---|---|
+| **Step** | Add `Noni`, `Remy` (6 players total) |
+| **Assert** | Player count = 6. CTA still enabled. |
+
+---
+
+## J-3 · Winning Point
+
+| | |
+|---|---|
+| **Step** | Tap `Winning Point →` → tap `11` |
+| **Assert** | `session.winningPoint = 11`. CTA enabled. |
+
+---
+
+## J-4 · Courts
+
+| | |
+|---|---|
+| **Step** | Add `Court 1`, `Court 2` |
+| **Assert** | 2 courts added. CTA enabled. |
+
+---
+
+## J-5 · Session Start
+
+| | |
+|---|---|
+| **Step** | Tap `Generate Match` |
+| **Screen** | `/match` |
+| **Expected State** | 2 court cards (both dashed/empty). 6 players benched. No matches assigned yet. |
+| **Assert** | `session.status = 'active'`. Both courts show `+ Generate Match`. All 6 players benched. |
+
+---
+
+## J-6 · Generate Match — Court 1 — Type Toggle Visible
+
+| | |
+|---|---|
+| **Step** | Tap `+ Generate Match` on Court 1 |
+| **Screen** | `/match/generate/court-1-id` |
+| **Expected State** | Type toggle shown at top: `Singles` \| `Doubles`. Singles selected by default. Match options shown below for singles. |
+| **Assert** | Toggle is visible only because `session.mode === 'mixed'`. Default = Singles. |
+
+---
+
+## J-7 · Generate Match — Court 1 — Switch to Doubles
+
+| | |
+|---|---|
+| **Step** | Tap `Doubles` on the type toggle |
+| **Expected State** | Options regenerate. Now shows 2v2 matchup options using all 6 benched players. Previously selected option is cleared. |
+| **Assert** | `getMatchOptions` called with `random-doubles`. No singles options shown. Selected key reset to null. |
+
+| | |
+|---|---|
+| **Step** | Select a doubles matchup (e.g. Hafiz & Razak vs Jojo & Khairi) |
+| **Step** | Tap `Submit` |
+| **Screen** | `/match` |
+| **Expected State** | Court 1 dark/active. Match shows 2v2. 2 players benched (Noni, Remy). Court 2 still dashed. |
+| **Assert** | `match.matchType = 'random-doubles'`. 4 players `status: playing`. 2 players `status: benched`. |
+
+---
+
+## J-8 · Player Integrity After Court 1 Doubles Assigned
+
+| | |
+|---|---|
+| **Assert** | `playing + benched = 6`. No exceptions. |
+| **Assert** | Hafiz, Razak, Jojo, Khairi = playing. Noni, Remy = benched. |
+| **Assert** | No player appears in both lists simultaneously. |
+
+---
+
+## J-9 · Generate Match — Court 2 — Doubles Disabled
+
+| | |
+|---|---|
+| **Step** | Tap `+ Generate Match` on Court 2 |
+| **Screen** | `/match/generate/court-2-id` |
+| **Expected State** | Type toggle shown. Singles is default. **Doubles toggle is disabled.** |
+| **Assert** | Only 2 benched players (Noni, Remy). Doubles requires 4. Doubles button disabled. |
+| **Assert** | Disabled state includes a note: `Not enough players for doubles` or similar. |
+
+---
+
+## J-10 · Generate Match — Court 2 — Singles Only
+
+| | |
+|---|---|
+| **Step** | Confirm Singles is selected (only option) |
+| **Expected State** | One matchup shown: Noni vs Remy. |
+| **Step** | Select the option → tap `Submit` |
+| **Screen** | `/match` |
+| **Expected State** | Both courts dark/active. Court 1 = 2v2. Court 2 = 1v1. 0 benched. |
+| **Assert** | `match.matchType = 'singles'` on Court 2 match. All 6 players `status: playing`. Benched = 0. |
+
+---
+
+## J-11 · Player Integrity — Both Courts Active
+
+| | |
+|---|---|
+| **Assert** | `playing + benched = 6`. |
+| **Assert** | Court 1 players (4) and Court 2 players (2) are completely disjoint. |
+| **Assert** | No player on both courts simultaneously. |
+
+---
+
+## J-12 · Complete Court 1 Match
+
+| | |
+|---|---|
+| **Step** | Tap `+ Add Score` on Court 1 → select winner → submit score |
+| **Screen** | `/match` |
+| **Expected State** | Court 1 now dashed/empty. Court 2 still active. 4 players returned to benched. |
+| **Assert** | Benched count = 4. Court 2 match unchanged. `playing + benched = 6` still holds. |
+
+---
+
+## J-13 · Generate Next on Court 1 — Doubles Now Available
+
+| | |
+|---|---|
+| **Step** | Tap `+ Generate Match` on Court 1 |
+| **Expected State** | Type toggle shown. Both Singles and Doubles enabled. |
+| **Assert** | 4 benched players available — Doubles toggle is now active (not disabled). |
+
+---
+
+## J-14 · History Badges
+
+| | |
+|---|---|
+| **Step** | Tap `History` tab |
+| **Expected State** | Completed Court 1 match shows `2v2` badge. |
+| **Assert** | Badge derived from `match.matchType`, not `session.mode`. |
+| **Assert** | If Court 2 match also completed: shows `1v1` badge. Both badges correct. |
+
+---
+
+## J-15 · Session Restore — Mixed Mode Persists
+
+| | |
+|---|---|
+| **Step** | With both courts active, hard refresh the page |
+| **Screen** | `/match` (restored) |
+| **Expected State** | Session fully restored. Both active matches intact. Player statuses correct. |
+| **Assert** | `session.mode = 'mixed'` restored from localStorage. Match `matchType` fields preserved. |
+
+---
+
+## J-16 · End Session
+
+| | |
+|---|---|
+| **Step** | Complete all active matches → tap `End Game` |
+| **Screen** | `/` |
+| **Expected State** | Home screen. Session cleared. |
+| **Assert** | localStorage key `matcha:session` null or removed. |
+
+---
+
+## J — Edge Cases
+
+### J-E1 · Switch From Mixed to Singles Mid-Setup
+
+| | |
+|---|---|
+| **Step** | Select Mixed. Add 4 players. Go back to Match Type. Select Singles. |
+| **Assert** | Player list cleared. `session.mode = 'singles'`. `session.matchType = 'singles'`. No partner data exists to clear (Mixed never creates pairs). |
+
+---
+
+### J-E2 · Switch From Fixed Doubles to Mixed
+
+| | |
+|---|---|
+| **Step** | Select Fixed Doubles. Add 4 players. Pair them. Go back. Select Mixed. |
+| **Assert** | Player list cleared. All `partnerId` references gone. `session.mode = 'mixed'`. |
+
+---
+
+### J-E3 · Mixed With Exactly 4 Players — Doubles Uses All
+
+| | |
+|---|---|
+| **Setup** | 4 players · 1 court · Mixed |
+| **Step** | Generate match → select Doubles |
+| **Expected State** | All 4 players playing. 0 benched. |
+| **Assert** | Court occupied. `playing + benched = 4`. |
+| **Step** | Attempt `+ Generate Match` (no second court) — not applicable. Court is occupied. |
+| **Assert** | No generate button shown on occupied court. |
+
+---
+
+### J-E4 · Mixed With Exactly 4 Players — Then Singles
+
+| | |
+|---|---|
+| **Setup** | 4 players · 2 courts · Mixed |
+| **Step** | Court 1: generate Singles (2 players used). Court 2: generate — Doubles disabled (only 2 benched). |
+| **Assert** | Court 2 toggle shows Singles only. Doubles disabled. |
+| **Step** | Court 2: generate Singles (remaining 2 players). |
+| **Assert** | Both courts active. 0 benched. Both matches `matchType = 'singles'`. |
+
+---
+
+### J-E5 · Re-generate in Mixed Mode Respects Chosen Type
+
+| | |
+|---|---|
+| **Step** | On GenerateMatch screen, select Doubles, tap `↻ Re-generate` |
+| **Assert** | New options shown are still Doubles options, not Singles. Type toggle state is preserved across re-generate. |
+
+---
+
+## J — Invariants
+
+These must hold at all times during a Mixed session.
+
+| # | Invariant |
+|---|---|
+| M-1 | `playing + benched = total players` — holds after every action |
+| M-2 | No player appears in two active matches across courts |
+| M-3 | Doubles toggle on GenerateMatch disabled when benched count < 4 |
+| M-4 | `match.matchType` always set on new matches — never undefined |
+| M-5 | Pairing step never shown during Mixed setup |
+| M-6 | Switching to Mixed mode clears all players |
+| M-7 | History badge reflects `match.matchType`, not `session.mode` |
+| M-8 | `session.mode` and `session.matchType` both restored correctly from localStorage |
+
+---
+
+## J — Pass Criteria
+
+Flow J passes only when:
+- Every Assert above is satisfied with zero manual workarounds
+- All existing flows (A–I) still pass — no regressions
+- `npm test` passes all domain unit tests including Sections 24–28
+
+---
+
 ## Summary — Flows at a Glance
 
 | Flow | Type | Players | Courts | Winning Pt | Key Test |
@@ -1005,6 +1305,7 @@ Benched: Razak
 | G | All | Various | Various | — | Player integrity — no ghost players |
 | H | All | Various | Various | Various | 20 additional edge cases |
 | I | All | Various | Various | — | Reducer & domain gaps from code review |
+| J | Mixed | 6 | 2 | 11 | Per-court type toggle, doubles disabled guard |
 
 ---
 

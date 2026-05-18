@@ -28,10 +28,11 @@ export function Players() {
   const [inputError, setInputError] = useState('')
   const [navError, setNavError] = useState('')
 
-  const isDoubles = session.matchType !== 'singles'
-  const isFixedDoubles = session.matchType === 'fixed-doubles'
+  const isMixed = session.mode === 'mixed'
+  const isDoubles = session.mode === 'fixed-doubles' || session.mode === 'random-doubles'
+  const isFixedDoubles = session.mode === 'fixed-doubles'
   const players = session.players
-  const minPlayers = isDoubles ? MIN_PLAYERS_DOUBLES : MIN_PLAYERS_SINGLES
+  const minPlayers = isDoubles || isMixed ? MIN_PLAYERS_DOUBLES : MIN_PLAYERS_SINGLES
 
   function handleAdd() {
     const name = inputValue.trim()

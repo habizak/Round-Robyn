@@ -6,7 +6,7 @@ import {
   createElement,
 } from 'react'
 import type { ReactNode } from 'react'
-import type { Session, MatchType, Player, Court, Match, Score } from '../types'
+import type { Session, SessionMode, MatchType, Player, Court, Match, Score } from '../types'
 import { loadSession, saveSession, clearSession } from '../infrastructure/storage'
 import { generateRound, generateMatchKey } from '../domain/matchGenerator'
 import { canGenerateOnCourt } from '../domain/sessionRules'
@@ -14,7 +14,7 @@ import { canGenerateOnCourt } from '../domain/sessionRules'
 // ─── Actions ────────────────────────────────────────────────────────────────
 
 type Action =
-  | { type: 'SET_MATCH_TYPE'; matchType: MatchType }
+  | { type: 'SET_MATCH_TYPE'; mode: SessionMode }
   | { type: 'ADD_PLAYER'; name: string }
   | { type: 'REMOVE_PLAYER'; id: string }
   | { type: 'SET_PARTNER'; playerId: string; partnerId: string }
@@ -24,7 +24,7 @@ type Action =
   | { type: 'START_SESSION' }
   | { type: 'COMPLETE_MATCH'; matchId: string; score?: Score }
   | { type: 'GENERATE_NEXT_MATCH'; courtId: string }
-  | { type: 'ASSIGN_MATCH'; courtId: string; team1: string[]; team2: string[] }
+  | { type: 'ASSIGN_MATCH'; courtId: string; team1: string[]; team2: string[]; matchType: MatchType }
   | { type: 'END_SESSION' }
   | { type: 'LOAD_SESSION'; session: Session }
 
@@ -32,6 +32,7 @@ type Action =
 
 const initialSession: Session = {
   id: crypto.randomUUID(),
+  mode: 'singles',
   matchType: 'singles',
   winningPoint: 21,
   players: [],
@@ -40,6 +41,12 @@ const initialSession: Session = {
   currentRound: 1,
   status: 'setup',
   byeHistory: [],
+}
+
+function normalizeLoadedSession(session: Session): Session {
+  const mode: SessionMode = session.mode ?? session.matchType ?? 'singles'
+  const matchType: MatchType = session.matchType ?? (mode === 'mixed' ? 'singles' : mode)
+  return { ...session, mode, matchType }
 }
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
@@ -54,13 +61,16 @@ function getUsedMatchups(matches: Match[]): Set<string> {
   return used
 }
 
-function sessionReducer(state: Session, action: Action): Session {
+export function sessionReducer(state: Session, action: Action): Session {
   switch (action.type) {
     case 'LOAD_SESSION':
-      return action.session
+      return normalizeLoadedSession(action.session)
 
-    case 'SET_MATCH_TYPE':
-      return { ...state, matchType: action.matchType, players: [] }
+    case 'SET_MATCH_TYPE': {
+      const mode = action.mode
+      const matchType: MatchType = mode === 'mixed' ? 'singles' : mode
+      return { ...state, mode, matchType, players: [] }
+    }
 
     case 'ADD_PLAYER': {
       const id = crypto.randomUUID()
@@ -103,6 +113,15 @@ function sessionReducer(state: Session, action: Action): Session {
     }
 
     case 'START_SESSION': {
+      if (state.mode === 'mixed') {
+        return {
+          ...state,
+          status: 'active',
+          matches: [],
+          currentRound: 1,
+        }
+      }
+
       const usedMatchups = new Set<string>()
       const result = generateRound(
         state.players,
@@ -114,17 +133,20 @@ function sessionReducer(state: Session, action: Action): Session {
         1
       )
 
-      // Update court statuses
       const playingCourtIds = new Set(result.matches.map(m => m.courtId))
       const courts = state.courts.map(c =>
         playingCourtIds.has(c.id) ? { ...c, status: 'occupied' as const } : c
       )
 
-      // Update player statuses
       const playingPlayerIds = new Set(result.matches.flatMap(m => [...m.team1, ...m.team2]))
       const players = state.players.map(p => ({
         ...p,
         status: playingPlayerIds.has(p.id) ? 'playing' as const : 'benched' as const,
+      }))
+
+      const matches = result.matches.map(m => ({
+        ...m,
+        matchType: state.matchType,
       }))
 
       return {
@@ -132,7 +154,7 @@ function sessionReducer(state: Session, action: Action): Session {
         status: 'active',
         courts,
         players,
-        matches: result.matches,
+        matches,
         currentRound: 1,
         byeHistory: result.updatedByeHistory,
       }
@@ -145,7 +167,6 @@ function sessionReducer(state: Session, action: Action): Session {
           : m
       )
 
-      // Free the court
       const completedMatch = state.matches.find(m => m.id === action.matchId)
       let courts = state.courts
       if (completedMatch) {
@@ -154,7 +175,6 @@ function sessionReducer(state: Session, action: Action): Session {
         )
       }
 
-      // Update player statuses - players who were on this match are now benched
       let players = state.players
       if (completedMatch) {
         const freedPlayers = new Set([...completedMatch.team1, ...completedMatch.team2])
@@ -186,7 +206,10 @@ function sessionReducer(state: Session, action: Action): Session {
 
       if (result.matches.length === 0) return state
 
-      const newMatch = result.matches[0]
+      const newMatch: Match = {
+        ...result.matches[0],
+        matchType: state.matchType,
+      }
       const courts = state.courts.map(c =>
         c.id === action.courtId ? { ...c, status: 'occupied' as const } : c,
       )
@@ -225,6 +248,7 @@ function sessionReducer(state: Session, action: Action): Session {
         status: 'playing',
         matchNumber,
         round: state.currentRound,
+        matchType: action.matchType,
       }
 
       const courts = state.courts.map(c =>

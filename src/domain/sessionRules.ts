@@ -107,7 +107,9 @@ export function canGenerateOnCourt(session: Session, courtId: string): Validatio
     return { valid: false, message: 'All courts are in use. Complete a match first.' }
   }
   const benchedCount = session.players.filter(p => p.status === 'benched').length
-  const min = minPlayersPerMatch(session.matchType)
+  const min = session.mode === 'mixed'
+    ? MIN_PLAYERS_SINGLES
+    : minPlayersPerMatch(session.matchType)
   if (benchedCount < min) {
     const label = session.matchType === 'singles' ? 'singles' : 'doubles'
     return {

@@ -1,11 +1,17 @@
-import type { Session } from '../types'
+import type { Session, SessionMode } from '../types'
 import { STORAGE_KEY } from '../domain/constants'
+
+function normalizeSession(raw: Session): Session {
+  const mode: SessionMode = raw.mode ?? raw.matchType ?? 'singles'
+  const matchType = raw.matchType ?? (mode === 'mixed' ? 'singles' : mode)
+  return { ...raw, mode, matchType }
+}
 
 export function loadSession(): Session | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as Session
+    return normalizeSession(JSON.parse(raw) as Session)
   } catch {
     return null
   }

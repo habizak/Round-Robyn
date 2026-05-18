@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { MatchType } from '../types'
+import type { SessionMode } from '../types'
 import { useSession } from '../hooks/useSession'
 import { Button } from '../components/Button'
 import { SetupScreenLayout } from '../components/SetupScreenLayout'
 
 const SINGLES_OPTION = {
-  value: 'singles' as MatchType,
+  value: 'singles' as SessionMode,
   label: 'Singles',
   description: 'Individual matches',
   icon: '/logo_match_single.png',
@@ -14,18 +14,25 @@ const SINGLES_OPTION = {
 
 const DOUBLES_OPTIONS = [
   {
-    value: 'fixed-doubles' as MatchType,
+    value: 'fixed-doubles' as SessionMode,
     label: 'Fixed Doubles',
     description: 'Partners stay the same',
     icon: '/icon_match_doubles.png',
   },
   {
-    value: 'random-doubles' as MatchType,
+    value: 'random-doubles' as SessionMode,
     label: 'Random Doubles',
     description: 'Randomly assigned teams',
     icon: '/icon_match_doubles.png',
   },
 ]
+
+const MIXED_OPTION = {
+  value: 'mixed' as SessionMode,
+  label: 'Mixed',
+  description: 'Singles or doubles per court',
+  icon: '/icon_match_doubles.png',
+}
 
 const backNavStyle: React.CSSProperties = {
   background: 'none',
@@ -44,21 +51,21 @@ const backNavStyle: React.CSSProperties = {
 export function MatchType() {
   const { session, dispatch } = useSession()
   const navigate = useNavigate()
-  const [selected, setSelected] = useState<MatchType | null>(
-    session.status === 'setup' && session.matchType ? session.matchType : null
+  const [selected, setSelected] = useState<SessionMode | null>(
+    session.status === 'setup' && session.mode ? session.mode : null
   )
 
-  function handleSelect(type: MatchType) {
-    setSelected(type)
+  function handleSelect(mode: SessionMode) {
+    setSelected(mode)
   }
 
   function handleNext() {
     if (!selected) return
-    dispatch({ type: 'SET_MATCH_TYPE', matchType: selected })
+    dispatch({ type: 'SET_MATCH_TYPE', mode: selected })
     navigate('/setup/players')
   }
 
-  function cardStyle(value: MatchType): React.CSSProperties {
+  function cardStyle(value: SessionMode, fullWidth = false): React.CSSProperties {
     const isSelected = selected === value
     return {
       border: isSelected ? '2px solid #FE680C' : '1.5px solid #dcdcdc',
@@ -66,7 +73,7 @@ export function MatchType() {
       padding: '16px',
       cursor: 'pointer',
       backgroundColor: 'var(--color-surface)',
-      width: 'calc(50% - 6px)',
+      width: fullWidth ? '100%' : 'calc(50% - 6px)',
       boxSizing: 'border-box',
     }
   }
@@ -101,92 +108,108 @@ export function MatchType() {
         Match Type
       </h1>
 
-      {/* Singles section */}
-      <div
-        style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '20px',
-          fontWeight: 700,
-          color: '#3c3c3c',
-          marginBottom: '12px',
-        }}
-      >
-        Singles
-      </div>
+      <Section label="Singles" titleSize="20px">
+        <ModeCard
+          option={SINGLES_OPTION}
+          style={cardStyle(SINGLES_OPTION.value)}
+          onSelect={() => handleSelect(SINGLES_OPTION.value)}
+        />
+      </Section>
 
-      <div
-        style={cardStyle(SINGLES_OPTION.value)}
-        onClick={() => handleSelect(SINGLES_OPTION.value)}
-      >
-        <img src={SINGLES_OPTION.icon} alt="Singles" style={{ width: '36px', height: '36px', objectFit: 'contain', marginBottom: '8px' }} />
-        <div
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '14px',
-            fontWeight: 700,
-            color: '#3c3c3c',
-            marginBottom: '4px',
-          }}
-        >
-          {SINGLES_OPTION.label}
+      <Section label="Doubles" titleSize="16px" style={{ marginTop: '24px' }}>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {DOUBLES_OPTIONS.map(opt => (
+            <ModeCard
+              key={opt.value}
+              option={opt}
+              style={cardStyle(opt.value)}
+              onSelect={() => handleSelect(opt.value)}
+            />
+          ))}
         </div>
-        <div
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '12px',
-            color: '#9a9a9a',
-          }}
-        >
-          {SINGLES_OPTION.description}
-        </div>
-      </div>
+      </Section>
 
-      {/* Doubles section */}
-      <div
-        style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '16px',
-          fontWeight: 700,
-          color: '#3c3c3c',
-          marginTop: '24px',
-          marginBottom: '12px',
-        }}
-      >
-        Doubles
-      </div>
-
-      <div style={{ display: 'flex', gap: '12px' }}>
-        {DOUBLES_OPTIONS.map(opt => (
-          <div
-            key={opt.value}
-            style={cardStyle(opt.value)}
-            onClick={() => handleSelect(opt.value)}
-          >
-            <img src={opt.icon} alt={opt.label} style={{ width: '36px', height: '36px', objectFit: 'contain', marginBottom: '8px' }} />
-            <div
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '14px',
-                fontWeight: 700,
-                color: '#3c3c3c',
-                marginBottom: '4px',
-              }}
-            >
-              {opt.label}
-            </div>
-            <div
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: '12px',
-                color: '#9a9a9a',
-              }}
-            >
-              {opt.description}
-            </div>
-          </div>
-        ))}
-      </div>
-
+      <Section label="Mixed" titleSize="16px" style={{ marginTop: '24px' }}>
+        <ModeCard
+          option={MIXED_OPTION}
+          style={cardStyle(MIXED_OPTION.value, true)}
+          onSelect={() => handleSelect(MIXED_OPTION.value)}
+        />
+      </Section>
     </SetupScreenLayout>
+  )
+}
+
+function Section({
+  label,
+  titleSize,
+  style,
+  children,
+}: {
+  label: string
+  titleSize: string
+  style?: React.CSSProperties
+  children: React.ReactNode
+}) {
+  return (
+    <div style={style}>
+      <div
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: titleSize,
+          fontWeight: 700,
+          color: '#3c3c3c',
+          marginBottom: '12px',
+        }}
+      >
+        {label}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function ModeCard({
+  option,
+  style,
+  onSelect,
+}: {
+  option: { value: SessionMode; label: string; description: string; icon: string }
+  style: React.CSSProperties
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      data-testid={`mode-${option.value}`}
+      onClick={onSelect}
+      style={{
+        ...style,
+        textAlign: 'left',
+        font: 'inherit',
+      }}
+    >
+      <img src={option.icon} alt={option.label} style={{ width: '36px', height: '36px', objectFit: 'contain', marginBottom: '8px' }} />
+      <div
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '14px',
+          fontWeight: 700,
+          color: '#3c3c3c',
+          marginBottom: '4px',
+        }}
+      >
+        {option.label}
+      </div>
+      <div
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '12px',
+          color: '#9a9a9a',
+        }}
+      >
+        {option.description}
+      </div>
+    </button>
   )
 }

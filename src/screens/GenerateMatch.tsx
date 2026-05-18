@@ -11,7 +11,8 @@ import {
   type MatchOption,
 } from '../domain/matchGenerator'
 import { canGenerateOnCourt, getActivePlayerIds } from '../domain/sessionRules'
-import type { Session } from '../types'
+import { MIN_PLAYERS_DOUBLES } from '../domain/constants'
+import type { MatchType, Session } from '../types'
 
 const PAGE_SIZE = 4
 
@@ -144,6 +145,32 @@ function MatchOptionCard({
   )
 }
 
+const activeToggleStyle: React.CSSProperties = {
+  flex: 1,
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '14px',
+  fontWeight: 700,
+  padding: '10px 16px',
+  borderRadius: '12px',
+  border: '2px solid #FE680C',
+  backgroundColor: '#FE680C',
+  color: 'white',
+  cursor: 'pointer',
+}
+
+const inactiveToggleStyle: React.CSSProperties = {
+  flex: 1,
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '14px',
+  fontWeight: 700,
+  padding: '10px 16px',
+  borderRadius: '12px',
+  border: '1.5px solid #dcdcdc',
+  backgroundColor: 'var(--color-bg)',
+  color: '#3c3c3c',
+  cursor: 'pointer',
+}
+
 export function GenerateMatch() {
   const { courtId } = useParams<{ courtId: string }>()
   const { session, dispatch } = useSession()
@@ -151,6 +178,12 @@ export function GenerateMatch() {
   const [filterModalOpen, setFilterModalOpen] = useState(false)
   const [filterPlayerIds, setFilterPlayerIds] = useState<string[]>([])
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [chosenType, setChosenType] = useState<'singles' | 'random-doubles'>('singles')
+
+  const isMixed = session.mode === 'mixed'
+  const benchedCount = session.players.filter(p => p.status === 'benched').length
+  const canPickDoubles = benchedCount >= MIN_PLAYERS_DOUBLES
+  const activeMatchType: MatchType = isMixed ? chosenType : session.matchType
 
   const court = session.courts.find(c => c.id === courtId)
   const canGenerate = courtId ? canGenerateOnCourt(session, courtId) : { valid: false }
@@ -161,18 +194,28 @@ export function GenerateMatch() {
     }
   }, [courtId, court, canGenerate.valid, navigate])
 
+  useEffect(() => {
+    setSelectedKey(null)
+  }, [chosenType])
+
+  useEffect(() => {
+    if (isMixed && chosenType === 'random-doubles' && !canPickDoubles) {
+      setChosenType('singles')
+    }
+  }, [isMixed, chosenType, canPickDoubles])
+
   const allScoredOptions = useMemo(() => {
     const activeIds = getActivePlayerIds(session.matches)
     const matchCounts = getPlayerMatchCounts(session)
     return getMatchOptions(
       session.players,
-      session.matchType,
+      activeMatchType,
       getUsedMatchups(session.matches),
       activeIds,
       100,
       matchCounts,
     )
-  }, [session])
+  }, [session, activeMatchType])
 
   const filteredOptions = useMemo(
     () => filterMatchOptions(allScoredOptions, filterPlayerIds),
@@ -200,6 +243,7 @@ export function GenerateMatch() {
       courtId,
       team1: selectedOption.team1,
       team2: selectedOption.team2,
+      matchType: activeMatchType,
     })
     navigate('/match')
   }
@@ -232,6 +276,44 @@ export function GenerateMatch() {
       >
         Generate Match
       </h1>
+
+      {isMixed && (
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setChosenType('singles')}
+              style={chosenType === 'singles' ? activeToggleStyle : inactiveToggleStyle}
+            >
+              Singles
+            </button>
+            <button
+              type="button"
+              onClick={() => setChosenType('random-doubles')}
+              disabled={!canPickDoubles}
+              style={{
+                ...(chosenType === 'random-doubles' ? activeToggleStyle : inactiveToggleStyle),
+                opacity: canPickDoubles ? 1 : 0.5,
+                cursor: canPickDoubles ? 'pointer' : 'not-allowed',
+              }}
+            >
+              Doubles
+            </button>
+          </div>
+          {!canPickDoubles && (
+            <p
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '12px',
+                color: '#9a9a9a',
+                marginTop: '8px',
+              }}
+            >
+              Not enough players for doubles
+            </p>
+          )}
+        </div>
+      )}
 
       <div style={{ marginBottom: '16px' }}>
         <Button variant="outline-pill" size="sm" onClick={() => setFilterModalOpen(true)}>

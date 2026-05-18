@@ -622,6 +622,7 @@ describe('canGenerateOnCourt', () => {
   it('allows generation when enough benched players are available', () => {
     const session = {
       id: 's1',
+      mode: 'random-doubles' as const,
       matchType: 'random-doubles' as const,
       winningPoint: 21,
       players: [p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8)].map((player, i) =>
@@ -649,6 +650,7 @@ describe('canGenerateOnCourt', () => {
   it('blocks generation when not enough benched players remain', () => {
     const session = {
       id: 's1',
+      mode: 'random-doubles' as const,
       matchType: 'random-doubles' as const,
       winningPoint: 21,
       players: [p(1), p(2), p(3), p(4)].map((player, i) =>

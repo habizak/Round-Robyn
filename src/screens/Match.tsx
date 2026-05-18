@@ -364,6 +364,8 @@ export function Match() {
                 const team1Won = m.team1.some(id => winnerIds.includes(id))
                 const team1Score = team1Won ? session.winningPoint : (m.score?.team2Points ?? 0)
                 const team2Score = team1Won ? (m.score?.team1Points ?? 0) : session.winningPoint
+                const resolvedType = m.matchType ?? session.matchType
+                const typeBadge = resolvedType === 'singles' ? '1v1' : '2v2'
 
                 return (
                   <div key={m.id}>
@@ -393,9 +395,23 @@ export function Match() {
                           color: 'white',
                           textAlign: 'center',
                           marginBottom: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
                         }}
                       >
-                        Match {m.matchNumber}
+                        <span>Match {m.matchNumber}</span>
+                        <span
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: '12px',
+                            fontWeight: 400,
+                            color: '#9a9a9a',
+                          }}
+                        >
+                          {typeBadge}
+                        </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         <div style={{ flex: 1 }}>

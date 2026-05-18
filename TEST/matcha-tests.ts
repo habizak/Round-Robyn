@@ -13,10 +13,12 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { sessionReducer } from '../src/hooks/useSession'
 
 // ─── Types (inline for test portability) ────────────────────────────────────
 
 type MatchType = 'singles' | 'fixed-doubles' | 'random-doubles'
+type SessionMode = 'singles' | 'fixed-doubles' | 'random-doubles' | 'mixed'
 
 type Player = {
   id: string
@@ -44,6 +46,7 @@ type Match = {
 
 type Session = {
   id: string
+  mode: SessionMode
   matchType: MatchType
   winningPoint: number
   players: Player[]
@@ -822,6 +825,7 @@ describe('filterMatchOptions', () => {
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
     id: 's1',
+    mode: 'random-doubles',
     matchType: 'random-doubles',
     winningPoint: 21,
     players: [],
@@ -1123,4 +1127,496 @@ describe('SET_MATCH_TYPE clears player list', () => {
     // No player objects remain — no orphaned partnerIds possible
     expect(stateAfter.players.some((pl: Player) => pl.partnerId !== undefined)).toBe(false)
   })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 24: Mixed Mode — canGenerateOnCourt
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// These tests cover the updated canGenerateOnCourt behaviour when
+// session.mode === 'mixed'. The minimum bench count gate drops to 2
+// (MIN_PLAYERS_SINGLES) because the match type is chosen at generation
+// time, not at session level.
+//
+// Append this section to TEST/matcha-tests.ts after Section 23.
+// Update the Session type at the top of the file to include:
+//
+//   type SessionMode = 'singles' | 'fixed-doubles' | 'random-doubles' | 'mixed'
+//   type Session = { ..., mode: SessionMode }
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Mixed Mode — canGenerateOnCourt', () => {
+
+  // ── Helper: mixed session factory ─────────────────────────────────────────
+
+  function makeMixedSession(overrides: Partial<Session> = {}): Session {
+    return {
+      id: 's1',
+      mode: 'mixed',
+      matchType: 'singles', // fallback; not used for gate logic in mixed mode
+      winningPoint: 11,
+      players: [],
+      courts: [],
+      matches: [],
+      currentRound: 1,
+      status: 'active',
+      byeHistory: [],
+      ...overrides,
+    }
+  }
+
+  // ── Gate: minimum 2 benched (not 4) ───────────────────────────────────────
+
+  it('J-domain-1: allows generation with 2 benched players in mixed mode', () => {
+    const session = makeMixedSession({
+      players: [
+        { ...p(1), status: 'playing' },
+        { ...p(2), status: 'playing' },
+        { ...p(3), status: 'benched' },
+        { ...p(4), status: 'benched' },
+      ],
+      courts: [c(1), c(2)],
+      matches: [{
+        id: 'm1', courtId: 'c1', team1: ['p1'], team2: ['p2'],
+        status: 'playing', matchNumber: 1, round: 1, matchType: 'singles',
+      }],
+    })
+    expect(canGenerateOnCourt(session, 'c2').valid).toBe(true)
+  })
+
+  it('J-domain-2: blocks generation with only 1 benched player in mixed mode', () => {
+    const session = makeMixedSession({
+      players: [
+        { ...p(1), status: 'playing' },
+        { ...p(2), status: 'playing' },
+        { ...p(3), status: 'playing' },
+        { ...p(4), status: 'benched' },
+      ],
+      courts: [c(1), c(2)],
+      matches: [{
+        id: 'm1', courtId: 'c1', team1: ['p1', 'p2'], team2: ['p3', 'p4'],
+        status: 'playing', matchNumber: 1, round: 1, matchType: 'random-doubles',
+      }],
+    })
+    const result = canGenerateOnCourt(session, 'c2')
+    expect(result.valid).toBe(false)
+    expect(result.message).toMatch(/2/i)
+  })
+
+  it('J-domain-3: blocks generation with 0 benched players in mixed mode', () => {
+    const session = makeMixedSession({
+      players: [
+        { ...p(1), status: 'playing' },
+        { ...p(2), status: 'playing' },
+        { ...p(3), status: 'playing' },
+        { ...p(4), status: 'playing' },
+      ],
+      courts: [c(1), c(2)],
+      matches: [{
+        id: 'm1', courtId: 'c1', team1: ['p1', 'p2'], team2: ['p3', 'p4'],
+        status: 'playing', matchNumber: 1, round: 1, matchType: 'random-doubles',
+      }],
+    })
+    expect(canGenerateOnCourt(session, 'c2').valid).toBe(false)
+  })
+
+  it('J-domain-4: non-mixed session with 2 benched still requires 4 for doubles', () => {
+    // Confirm existing non-mixed behaviour is NOT broken by the mixed-mode change
+    const session = makeSession({
+      mode: 'random-doubles',
+      matchType: 'random-doubles',
+      players: [
+        { ...p(1), status: 'playing' },
+        { ...p(2), status: 'playing' },
+        { ...p(3), status: 'benched' },
+        { ...p(4), status: 'benched' },
+      ],
+      courts: [c(1), c(2)],
+      matches: [{
+        id: 'm1', courtId: 'c1', team1: ['p1', 'p2'], team2: ['p3', 'p4'],
+        status: 'playing', matchNumber: 1, round: 1, matchType: 'random-doubles',
+      }],
+    })
+    // Only 2 benched — not enough for doubles in non-mixed mode
+    expect(canGenerateOnCourt(session, 'c2').valid).toBe(false)
+  })
+
+  it('J-domain-5: court with active match is still blocked in mixed mode', () => {
+    const session = makeMixedSession({
+      players: [p(1), p(2), p(3), p(4)].map(pl => ({ ...pl, status: 'playing' as const })),
+      courts: [{ ...c(1), status: 'occupied' }],
+      matches: [{
+        id: 'm1', courtId: 'c1', team1: ['p1'], team2: ['p2'],
+        status: 'playing', matchNumber: 1, round: 1, matchType: 'singles',
+      }],
+    })
+    const result = canGenerateOnCourt(session, 'c1')
+    expect(result.valid).toBe(false)
+    expect(result.message).toMatch(/already in progress/i)
+  })
+
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 25: Mixed Mode — Match.matchType field
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Verifies that match objects produced or assembled in mixed sessions
+// carry the correct matchType, and that legacy matches without matchType
+// fall back gracefully.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Mixed Mode — Match.matchType field', () => {
+
+  it('J-domain-6: match object with matchType: singles has team sizes of 1', () => {
+    const match = {
+      id: 'm1', courtId: 'c1',
+      team1: ['p1'], team2: ['p2'],
+      status: 'playing' as const,
+      matchNumber: 1, round: 1,
+      matchType: 'singles' as MatchType,
+    }
+    expect(match.team1).toHaveLength(1)
+    expect(match.team2).toHaveLength(1)
+    expect(match.matchType).toBe('singles')
+  })
+
+  it('J-domain-7: match object with matchType: random-doubles has team sizes of 2', () => {
+    const match = {
+      id: 'm2', courtId: 'c2',
+      team1: ['p3', 'p4'], team2: ['p5', 'p6'],
+      status: 'playing' as const,
+      matchNumber: 2, round: 1,
+      matchType: 'random-doubles' as MatchType,
+    }
+    expect(match.team1).toHaveLength(2)
+    expect(match.team2).toHaveLength(2)
+    expect(match.matchType).toBe('random-doubles')
+  })
+
+  it('J-domain-8: legacy match without matchType falls back to session.matchType', () => {
+    // Simulates the backward-compatibility read in Match history display:
+    //   const matchType = match.matchType ?? session.matchType
+    const session = makeSession({ matchType: 'random-doubles' })
+    const legacyMatch = {
+      id: 'm1', courtId: 'c1',
+      team1: ['p1', 'p2'], team2: ['p3', 'p4'],
+      status: 'completed' as const,
+      matchNumber: 1, round: 1,
+      // matchType intentionally omitted — simulating pre-Mixed-mode match
+    }
+    const resolvedType = (legacyMatch as any).matchType ?? session.matchType
+    expect(resolvedType).toBe('random-doubles')
+  })
+
+  it('J-domain-9: two concurrent matches in mixed session can have different matchTypes', () => {
+    const matches = [
+      {
+        id: 'm1', courtId: 'c1',
+        team1: ['p1'], team2: ['p2'],
+        status: 'playing' as const,
+        matchNumber: 1, round: 1,
+        matchType: 'singles' as MatchType,
+      },
+      {
+        id: 'm2', courtId: 'c2',
+        team1: ['p3', 'p4'], team2: ['p5', 'p6'],
+        status: 'playing' as const,
+        matchNumber: 2, round: 1,
+        matchType: 'random-doubles' as MatchType,
+      },
+    ]
+    expect(matches[0].matchType).toBe('singles')
+    expect(matches[1].matchType).toBe('random-doubles')
+    // Player integrity: no overlap across both matches
+    const allIds = matches.flatMap(m => [...m.team1, ...m.team2])
+    expect(new Set(allIds).size).toBe(allIds.length)
+  })
+
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 26: Mixed Mode — SET_MATCH_TYPE reducer behaviour
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// These tests simulate the reducer logic directly (pure state transforms)
+// to verify mode and matchType are set correctly, and players are cleared.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Mixed Mode — SET_MATCH_TYPE reducer behaviour', () => {
+
+  function applySetMatchType(
+    state: Session,
+    mode: SessionMode,
+  ): Session {
+    // Mirrors the reducer case:
+    //   case 'SET_MATCH_TYPE': {
+    //     const matchType = mode === 'mixed' ? 'singles' : mode
+    //     return { ...state, mode, matchType, players: [] }
+    //   }
+    const matchType: MatchType = mode === 'mixed' ? 'singles' : mode
+    return { ...state, mode, matchType, players: [] }
+  }
+
+  it('J-domain-10: SET_MATCH_TYPE with mixed sets mode=mixed, matchType=singles, clears players', () => {
+    const before = makeSession({
+      mode: 'singles',
+      matchType: 'singles',
+      players: [p(1), p(2), p(3), p(4)],
+    })
+    const after = applySetMatchType(before, 'mixed')
+    expect(after.mode).toBe('mixed')
+    expect(after.matchType).toBe('singles')
+    expect(after.players).toHaveLength(0)
+  })
+
+  it('J-domain-11: SET_MATCH_TYPE with random-doubles sets mode and matchType identically', () => {
+    const before = makeSession({ mode: 'mixed', matchType: 'singles', players: [p(1)] })
+    const after = applySetMatchType(before, 'random-doubles')
+    expect(after.mode).toBe('random-doubles')
+    expect(after.matchType).toBe('random-doubles')
+    expect(after.players).toHaveLength(0)
+  })
+
+  it('J-domain-12: SET_MATCH_TYPE with mixed does not set matchType to mixed (mixed is not a MatchType)', () => {
+    const before = makeSession({ mode: 'singles', matchType: 'singles', players: [] })
+    const after = applySetMatchType(before, 'mixed')
+    const validMatchTypes: MatchType[] = ['singles', 'fixed-doubles', 'random-doubles']
+    expect(validMatchTypes).toContain(after.matchType)
+  })
+
+  it('J-domain-13: switching from fixed-doubles to mixed clears all players (and implicitly all partnerIds)', () => {
+    const before = makeSession({
+      mode: 'fixed-doubles',
+      matchType: 'fixed-doubles',
+      players: [
+        { ...p(1), partnerId: 'p2' },
+        { ...p(2), partnerId: 'p1' },
+        { ...p(3), partnerId: 'p4' },
+        { ...p(4), partnerId: 'p3' },
+      ],
+    })
+    const after = applySetMatchType(before, 'mixed')
+    expect(after.players).toHaveLength(0)
+    // No player objects remain — no orphaned partnerIds possible
+    expect(after.players.some((pl: Player) => pl.partnerId !== undefined)).toBe(false)
+  })
+
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 27: Mixed Mode — Player integrity invariant
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Verifies that the core invariant (playing + benched = total) holds
+// when courts run different match types simultaneously.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Mixed Mode — player integrity invariant', () => {
+
+  it('J-domain-14: playing + benched = total when one court is singles, another is doubles', () => {
+    // Simulate state after two matches assigned: Court 1 = singles (2 players),
+    // Court 2 = doubles (4 players). 6 total players, 0 benched.
+    const players: Player[] = [
+      { ...p(1), status: 'playing' }, // Court 1 singles
+      { ...p(2), status: 'playing' }, // Court 1 singles
+      { ...p(3), status: 'playing' }, // Court 2 doubles
+      { ...p(4), status: 'playing' }, // Court 2 doubles
+      { ...p(5), status: 'playing' }, // Court 2 doubles
+      { ...p(6), status: 'playing' }, // Court 2 doubles
+    ]
+    const playing = players.filter(p => p.status === 'playing').length
+    const benched = players.filter(p => p.status === 'benched').length
+    expect(playing + benched).toBe(players.length)
+  })
+
+  it('J-domain-15: no player appears in both active matches across courts', () => {
+    const court1Match = { team1: ['p1'], team2: ['p2'] }         // singles
+    const court2Match = { team1: ['p3', 'p4'], team2: ['p5', 'p6'] } // doubles
+
+    const c1Ids = new Set([...court1Match.team1, ...court1Match.team2])
+    const c2Ids = new Set([...court2Match.team1, ...court2Match.team2])
+
+    const overlap = [...c1Ids].filter(id => c2Ids.has(id))
+    expect(overlap).toHaveLength(0)
+  })
+
+  it('J-domain-16: playing + benched = total after Court 1 singles match completes', () => {
+    // Before: 2 playing (Court 1), 4 playing (Court 2), 0 benched
+    // After Court 1 completes: 2 now benched, 4 still playing
+    const playersBefore: Player[] = [
+      { ...p(1), status: 'playing' },
+      { ...p(2), status: 'playing' },
+      { ...p(3), status: 'playing' },
+      { ...p(4), status: 'playing' },
+      { ...p(5), status: 'playing' },
+      { ...p(6), status: 'playing' },
+    ]
+
+    // Simulate COMPLETE_MATCH for Court 1 (p1, p2 freed)
+    const freedIds = new Set(['p1', 'p2'])
+    const playersAfter = playersBefore.map(pl =>
+      freedIds.has(pl.id) ? { ...pl, status: 'benched' as const } : pl,
+    )
+
+    const playing = playersAfter.filter(pl => pl.status === 'playing').length
+    const benched = playersAfter.filter(pl => pl.status === 'benched').length
+    expect(playing).toBe(4)
+    expect(benched).toBe(2)
+    expect(playing + benched).toBe(playersBefore.length)
+  })
+
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 28: Mixed Mode — Regression (existing modes unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Quick smoke tests to confirm Singles, Fixed Doubles, and Random Doubles
+// sessions are unaffected by the Mixed mode additions.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Mixed Mode — regression: existing modes unchanged', () => {
+
+  it('J-domain-17: singles session canGenerateOnCourt still requires 2 benched', () => {
+    const session = makeSession({
+      mode: 'singles',
+      matchType: 'singles',
+      players: [
+        { ...p(1), status: 'benched' },
+        { ...p(2), status: 'benched' },
+      ],
+      courts: [c(1)],
+    })
+    expect(canGenerateOnCourt(session, 'c1').valid).toBe(true)
+  })
+
+  it('J-domain-18: random-doubles session canGenerateOnCourt still requires 4 benched', () => {
+    const session = makeSession({
+      mode: 'random-doubles',
+      matchType: 'random-doubles',
+      players: [
+        { ...p(1), status: 'benched' },
+        { ...p(2), status: 'benched' },
+        // only 2 benched — not enough
+      ],
+      courts: [c(1)],
+    })
+    expect(canGenerateOnCourt(session, 'c1').valid).toBe(false)
+  })
+
+  it('J-domain-19: fixed-doubles session is unaffected — pairing logic intact', () => {
+    const players: Player[] = [
+      { ...p(1), status: 'benched', partnerId: 'p2' },
+      { ...p(2), status: 'benched', partnerId: 'p1' },
+      { ...p(3), status: 'benched', partnerId: 'p4' },
+      { ...p(4), status: 'benched', partnerId: 'p3' },
+    ]
+    const session = makeSession({
+      mode: 'fixed-doubles',
+      matchType: 'fixed-doubles',
+      players,
+      courts: [c(1)],
+    })
+    expect(canGenerateOnCourt(session, 'c1').valid).toBe(true)
+    // All players still have valid partnerIds
+    players.forEach(pl => expect(pl.partnerId).toBeDefined())
+  })
+
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 29: Mixed Mode — sessionReducer (START_SESSION, ASSIGN_MATCH)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Mixed Mode — sessionReducer', () => {
+
+  it('J-domain-20: START_SESSION in mixed mode activates with no matches and all players benched', () => {
+    const before = makeMixedSession({
+      status: 'setup',
+      winningPoint: 11,
+      players: [p(1), p(2), p(3), p(4), p(5), p(6)].map(pl => ({ ...pl, status: 'benched' as const })),
+      courts: [c(1), c(2)],
+    })
+    const after = sessionReducer(before, { type: 'START_SESSION' })
+    expect(after.status).toBe('active')
+    expect(after.matches).toHaveLength(0)
+    expect(after.players.every(pl => pl.status === 'benched')).toBe(true)
+    expect(after.courts.every(ct => ct.status === 'empty')).toBe(true)
+  })
+
+  it('J-domain-21: ASSIGN_MATCH stores matchType on the new match', () => {
+    const before = makeMixedSession({
+      players: [p(1), p(2), p(3), p(4), p(5), p(6)].map(pl => ({ ...pl, status: 'benched' as const })),
+      courts: [c(1), c(2)],
+    })
+    const after = sessionReducer(before, {
+      type: 'ASSIGN_MATCH',
+      courtId: 'c1',
+      team1: ['p1', 'p2'],
+      team2: ['p3', 'p4'],
+      matchType: 'random-doubles',
+    })
+    expect(after.matches).toHaveLength(1)
+    expect(after.matches[0].matchType).toBe('random-doubles')
+    expect(after.matches[0].status).toBe('playing')
+    const playingIds = new Set(['p1', 'p2', 'p3', 'p4'])
+    expect(after.players.filter(pl => pl.status === 'playing').map(pl => pl.id).sort()).toEqual(
+      [...playingIds].sort(),
+    )
+    expect(after.players.filter(pl => pl.status === 'benched')).toHaveLength(2)
+  })
+
+  it('J-domain-22: ASSIGN_MATCH rejects a player already in an active match', () => {
+    const before = makeMixedSession({
+      players: [
+        { ...p(1), status: 'playing' },
+        { ...p(2), status: 'playing' },
+        { ...p(3), status: 'benched' },
+        { ...p(4), status: 'benched' },
+      ],
+      courts: [{ ...c(1), status: 'occupied' }, c(2)],
+      matches: [{
+        id: 'm1',
+        courtId: 'c1',
+        team1: ['p1'],
+        team2: ['p2'],
+        status: 'playing',
+        matchNumber: 1,
+        round: 1,
+        matchType: 'singles',
+      }],
+    })
+    const after = sessionReducer(before, {
+      type: 'ASSIGN_MATCH',
+      courtId: 'c2',
+      team1: ['p1'],
+      team2: ['p3'],
+      matchType: 'singles',
+    })
+    expect(after).toBe(before)
+    expect(after.matches).toHaveLength(1)
+  })
+
+  function makeMixedSession(overrides: Partial<Session> = {}): Session {
+    return {
+      id: 's1',
+      mode: 'mixed',
+      matchType: 'singles',
+      winningPoint: 11,
+      players: [],
+      courts: [],
+      matches: [],
+      currentRound: 1,
+      status: 'active',
+      byeHistory: [],
+      ...overrides,
+    }
+  }
+
 })

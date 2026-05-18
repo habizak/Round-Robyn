@@ -1,5 +1,7 @@
 export type MatchType = 'singles' | 'fixed-doubles' | 'random-doubles'
 
+export type SessionMode = 'singles' | 'fixed-doubles' | 'random-doubles' | 'mixed'
+
 export type Player = {
   id: string
   name: string
@@ -28,10 +30,12 @@ export type Match = {
   score?: Score
   matchNumber: number
   round: number
+  matchType?: MatchType
 }
 
 export type Session = {
   id: string
+  mode: SessionMode
   matchType: MatchType
   winningPoint: number
   players: Player[]
