@@ -65,7 +65,7 @@ export function MatchType() {
     navigate('/setup/players')
   }
 
-  function cardStyle(value: SessionMode, fullWidth = false): React.CSSProperties {
+  function cardStyle(value: SessionMode): React.CSSProperties {
     const isSelected = selected === value
     return {
       border: isSelected ? '2px solid #FE680C' : '1.5px solid #dcdcdc',
@@ -73,7 +73,7 @@ export function MatchType() {
       padding: '16px',
       cursor: 'pointer',
       backgroundColor: 'var(--color-surface)',
-      width: fullWidth ? '100%' : 'calc(50% - 6px)',
+      width: 'calc(50% - 6px)',
       boxSizing: 'border-box',
     }
   }
@@ -108,7 +108,7 @@ export function MatchType() {
         Match Type
       </h1>
 
-      <Section label="Singles" titleSize="20px">
+      <Section label="Singles">
         <ModeCard
           option={SINGLES_OPTION}
           style={cardStyle(SINGLES_OPTION.value)}
@@ -116,7 +116,7 @@ export function MatchType() {
         />
       </Section>
 
-      <Section label="Doubles" titleSize="16px" style={{ marginTop: '24px' }}>
+      <Section label="Doubles" style={{ marginTop: '24px' }}>
         <div style={{ display: 'flex', gap: '12px' }}>
           {DOUBLES_OPTIONS.map(opt => (
             <ModeCard
@@ -129,10 +129,10 @@ export function MatchType() {
         </div>
       </Section>
 
-      <Section label="Mixed" titleSize="16px" style={{ marginTop: '24px' }}>
+      <Section label="Mixed" style={{ marginTop: '24px' }}>
         <ModeCard
           option={MIXED_OPTION}
-          style={cardStyle(MIXED_OPTION.value, true)}
+          style={cardStyle(MIXED_OPTION.value)}
           onSelect={() => handleSelect(MIXED_OPTION.value)}
         />
       </Section>
@@ -142,12 +142,10 @@ export function MatchType() {
 
 function Section({
   label,
-  titleSize,
   style,
   children,
 }: {
   label: string
-  titleSize: string
   style?: React.CSSProperties
   children: React.ReactNode
 }) {
@@ -156,7 +154,7 @@ function Section({
       <div
         style={{
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: titleSize,
+          fontSize: '16px',
           fontWeight: 700,
           color: '#3c3c3c',
           marginBottom: '12px',

@@ -45,29 +45,18 @@ function formatSide(session: Session, ids: string[]): string {
 }
 
 function MatchOptionPicker({
-  filteredOptions,
+  visibleOptions,
   allScoredOptions,
   session,
   selectedKey,
   onSelect,
 }: {
-  filteredOptions: MatchOption[]
+  visibleOptions: MatchOption[]
   allScoredOptions: MatchOption[]
   session: Session
   selectedKey: string | null
   onSelect: (key: string | null) => void
 }) {
-  const [page, setPage] = useState(0)
-
-  const visibleOptions = filteredOptions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-  const canRegenerate = filteredOptions.length > PAGE_SIZE
-
-  function handleRegenerate() {
-    const nextPage = (page + 1) * PAGE_SIZE < filteredOptions.length ? page + 1 : 0
-    setPage(nextPage)
-    onSelect(null)
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {visibleOptions.length === 0 ? (
@@ -94,11 +83,6 @@ function MatchOptionPicker({
             onSelect={() => onSelect(option.key)}
           />
         ))
-      )}
-      {canRegenerate && (
-        <Button variant="outline-pill" fullWidth onClick={handleRegenerate}>
-          ↻ Re-generate
-        </Button>
       )}
     </div>
   )
@@ -179,6 +163,7 @@ export function GenerateMatch() {
   const [filterPlayerIds, setFilterPlayerIds] = useState<string[]>([])
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [chosenType, setChosenType] = useState<'singles' | 'random-doubles'>('singles')
+  const [pickerPage, setPickerPage] = useState(0)
 
   const isMixed = session.mode === 'mixed'
   const benchedCount = session.players.filter(p => p.status === 'benched').length
@@ -226,9 +211,23 @@ export function GenerateMatch() {
 
   useEffect(() => {
     setSelectedKey(null)
+    setPickerPage(0)
   }, [optionPickerKey])
 
+  const visibleOptions = filteredOptions.slice(
+    pickerPage * PAGE_SIZE,
+    (pickerPage + 1) * PAGE_SIZE,
+  )
+  const canRegenerate = filteredOptions.length > PAGE_SIZE
+
   const selectedOption = filteredOptions.find(o => o.key === selectedKey) ?? null
+
+  function handleRegenerate() {
+    const nextPage =
+      (pickerPage + 1) * PAGE_SIZE < filteredOptions.length ? pickerPage + 1 : 0
+    setPickerPage(nextPage)
+    setSelectedKey(null)
+  }
 
   function toggleFilter(id: string) {
     setFilterPlayerIds(prev =>
@@ -260,9 +259,16 @@ export function GenerateMatch() {
         </button>
       )}
       footer={(
-        <Button variant="primary" fullWidth disabled={!selectedOption} onClick={handleSubmit}>
-          Submit
-        </Button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+          {canRegenerate && (
+            <Button variant="outline-pill" fullWidth onClick={handleRegenerate}>
+              ↻ Re-generate
+            </Button>
+          )}
+          <Button variant="primary" fullWidth disabled={!selectedOption} onClick={handleSubmit}>
+            Submit
+          </Button>
+        </div>
       )}
     >
       <h1
@@ -384,8 +390,7 @@ export function GenerateMatch() {
       )}
 
       <MatchOptionPicker
-        key={optionPickerKey}
-        filteredOptions={filteredOptions}
+        visibleOptions={visibleOptions}
         allScoredOptions={allScoredOptions}
         session={session}
         selectedKey={selectedKey}
