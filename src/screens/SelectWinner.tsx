@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSession, getPlayerName } from '../hooks/useSession'
 import { Button } from '../components/Button'
+import { SetupScreenLayout } from '../components/SetupScreenLayout'
 import type React from 'react'
 
 const backNavStyle: React.CSSProperties = {
@@ -43,7 +44,6 @@ export function SelectWinner() {
 
   function handleEndMatch() {
     if (!matchId) return
-    // Complete the match with no score — court freed, shows in history without a score
     dispatch({
       type: 'COMPLETE_MATCH',
       matchId,
@@ -65,20 +65,23 @@ export function SelectWinner() {
   }
 
   return (
-    <div
-      style={{
-        maxWidth: '420px',
-        margin: '0 auto',
-        padding: '24px',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
+    <SetupScreenLayout
+      backButton={(
+        <button style={backNavStyle} onClick={() => navigate('/match')}>
+          ‹ Back
+        </button>
+      )}
+      footer={(
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <Button variant="primary" fullWidth disabled={!selectedTeam} onClick={handleInsertScore}>
+            Insert Score ›
+          </Button>
+          <Button variant="ghost" fullWidth onClick={handleEndMatch}>
+            End Match
+          </Button>
+        </div>
+      )}
     >
-      <button style={backNavStyle} onClick={() => navigate('/match')}>
-        ‹ Back
-      </button>
-
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
@@ -142,22 +145,6 @@ export function SelectWinner() {
           ))}
         </div>
       </div>
-
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          marginTop: 'auto',
-        }}
-      >
-        <Button variant="primary" fullWidth disabled={!selectedTeam} onClick={handleInsertScore}>
-          Insert Score ›
-        </Button>
-        <Button variant="ghost" fullWidth onClick={handleEndMatch}>
-          End Match
-        </Button>
-      </div>
-    </div>
+    </SetupScreenLayout>
   )
 }

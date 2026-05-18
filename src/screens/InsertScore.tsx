@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useSession, getPlayerName } from '../hooks/useSession'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
+import { SetupScreenLayout } from '../components/SetupScreenLayout'
 
 const backNavStyle: React.CSSProperties = {
   background: 'none',
@@ -67,20 +68,18 @@ export function InsertScore() {
   }
 
   return (
-    <div
-      style={{
-        maxWidth: '420px',
-        margin: '0 auto',
-        padding: '24px',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
+    <SetupScreenLayout
+      backButton={(
+        <button style={backNavStyle} onClick={() => navigate(`/match/score/${matchId}/winner`)}>
+          ‹ Back
+        </button>
+      )}
+      footer={(
+        <Button variant="primary" fullWidth disabled={!loserScore} onClick={handleSubmit}>
+          Submit
+        </Button>
+      )}
     >
-      <button style={backNavStyle} onClick={() => navigate(`/match/score/${matchId}/winner`)}>
-        ‹ Back
-      </button>
-
       <h1
         style={{
           fontFamily: "'JetBrains Mono', monospace",
@@ -106,7 +105,6 @@ export function InsertScore() {
         />
       </div>
 
-      {/* Team section */}
       <div style={{ marginBottom: '24px' }}>
         <div
           style={{
@@ -139,17 +137,6 @@ export function InsertScore() {
           Score: {session.winningPoint} – {loserScore || '?'}
         </div>
       </div>
-
-      <div style={{ marginTop: 'auto' }}>
-        <Button
-          variant="primary"
-          fullWidth
-          disabled={!loserScore}
-          onClick={handleSubmit}
-        >
-          Submit
-        </Button>
-      </div>
-    </div>
+    </SetupScreenLayout>
   )
 }
