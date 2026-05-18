@@ -339,13 +339,10 @@ export function generateRound(
 
   const rankedMatchups = rankMatchupsForSelection(pool, usedMatchups, playCounts)
 
-  // Greedily assign matchups to courts.
-  // Primary pass: no player reuse (ideal).
-  // Fallback pass: allow player reuse when courts exceed unique-player capacity.
+  // Greedily assign matchups to courts — each player appears in at most one match.
   const matches: Match[] = []
   const usedPlayerIds = new Set<string>()
   let matchNum = currentMatchNumber ?? 0
-  const remainingCourts: Court[] = []
   const remainingMatchups = [...rankedMatchups]
 
   for (const court of availableCourts) {
@@ -354,10 +351,7 @@ export function generateRound(
       const allP = [...t1, ...t2]
       return allP.every(id => !usedPlayerIds.has(id))
     })
-    if (idx === -1) {
-      remainingCourts.push(court)
-      continue
-    }
+    if (idx === -1) continue
     const [team1, team2] = remainingMatchups.splice(idx, 1)[0]
     ;[...team1, ...team2].forEach(id => usedPlayerIds.add(id))
     matches.push({
@@ -369,34 +363,6 @@ export function generateRound(
       matchNumber: matchNum++,
       round: currentRound ?? 0,
     })
-  }
-
-  // Fallback: fill remaining courts allowing player reuse, but still respect play-count
-  // fairness and never assign the same match key twice in a round.
-  if (remainingCourts.length > 0 && (freshMatchups.length > 0 || allMatchups.length > 0)) {
-    const pool = freshMatchups.length > 0 ? freshMatchups : allMatchups
-    const sortedPool = rankMatchupsForSelection(pool, usedMatchups, playCounts)
-    const assignedMatchKeys = new Set(matches.map(m => getMatchKey(m.team1, m.team2)))
-
-    for (const court of remainingCourts) {
-      const idx = sortedPool.findIndex(([t1, t2]) => {
-        const key = getMatchKey(t1, t2)
-        return !assignedMatchKeys.has(key)
-      })
-      if (idx === -1) break
-      const [team1, team2] = sortedPool.splice(idx, 1)[0]
-      assignedMatchKeys.add(getMatchKey(team1, team2))
-      ;[...team1, ...team2].forEach(id => usedPlayerIds.add(id))
-      matches.push({
-        id: crypto.randomUUID(),
-        courtId: court.id,
-        team1,
-        team2,
-        status: 'playing',
-        matchNumber: matchNum++,
-        round: currentRound ?? 0,
-      })
-    }
   }
 
   // Determine benched players (those not in any match)

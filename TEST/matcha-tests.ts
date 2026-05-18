@@ -194,11 +194,20 @@ describe('getMatchKey', () => {
 describe('generateRound — random-doubles', () => {
   const matchType: MatchType = 'random-doubles'
 
-  it('assigns one match per available court', () => {
-    const players = [p(1), p(2), p(3), p(4), p(5), p(6)]
+  it('assigns one match per available court when players are sufficient', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5), p(6), p(7), p(8)]
     const courts = [c(1), c(2)]
     const { matches } = generateRound(players, courts, matchType, new Set())
     expect(matches).toHaveLength(2)
+  })
+
+  it('does not assign a match to a court when there are not enough unique players', () => {
+    const players = [p(1), p(2), p(3), p(4), p(5)]
+    const courts = [c(1), c(2)]
+    const { matches } = generateRound(players, courts, matchType, new Set())
+    expect(matches).toHaveLength(1)
+    const allIds = matches.flatMap(m => [...m.team1, ...m.team2])
+    expect(new Set(allIds).size).toBe(allIds.length)
   })
 
   it('does not assign more matches than courts', () => {
