@@ -47,7 +47,7 @@ export function Input({
         placeholder={placeholder}
         style={{
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '14px',
+          fontSize: '16px',
           padding: '8px 12px',
           backgroundColor: 'var(--color-surface)',
           border: error
