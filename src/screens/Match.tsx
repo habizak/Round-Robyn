@@ -194,42 +194,45 @@ export function Match() {
   }
 
   return (
-    <div
-      style={{
-        maxWidth: '420px',
-        margin: '0 auto',
-        padding: '24px',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      {/* Tab bar — no underline border */}
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '24px' }}>
-        {(['match', 'history'] as const).map(t => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '28px',
-              fontWeight: tab === t ? 700 : 400,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: tab === t ? '#3c3c3c' : '#dcdcdc',
-              padding: '0',
-              lineHeight: '1.2',
-            }}
-          >
-            {t === 'match' ? 'Match' : 'History'}
-          </button>
-        ))}
+    <div className="setup-screen">
+      {/* Tab bar */}
+      <div style={{ flexShrink: 0, padding: '24px 24px 0' }}>
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '24px' }}>
+          {(['match', 'history'] as const).map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '28px',
+                fontWeight: tab === t ? 700 : 400,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: tab === t ? '#3c3c3c' : '#dcdcdc',
+                padding: '0',
+                lineHeight: '1.2',
+              }}
+            >
+              {t === 'match' ? 'Match' : 'History'}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Scrollable content */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          padding: '0 24px 16px',
+        }}
+      >
+
       {tab === 'match' && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
 
           {/* Courts section */}
           <div
@@ -290,17 +293,11 @@ export function Match() {
             </div>
           )}
 
-          {/* End Game */}
-          <div style={{ marginTop: 'auto', paddingTop: '24px' }}>
-            <Button variant="secondary" fullWidth onClick={() => setShowEndConfirm(true)}>
-              End Game
-            </Button>
-          </div>
         </div>
       )}
 
       {tab === 'history' && (
-        <div style={{ flex: 1 }}>
+        <div>
           <div style={{ marginBottom: '16px' }}>
             <Button variant="outline-pill" size="sm" onClick={() => setFilterModalOpen(true)}>
               = Filter
@@ -468,6 +465,23 @@ export function Match() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      </div>{/* end scrollable content */}
+
+      {/* Pinned footer — End Game only on match tab */}
+      {tab === 'match' && (
+        <div
+          style={{
+            flexShrink: 0,
+            padding: `16px 24px calc(16px + env(safe-area-inset-bottom))`,
+            backgroundColor: 'var(--color-bg)',
+          }}
+        >
+          <Button variant="secondary" fullWidth onClick={() => setShowEndConfirm(true)}>
+            End Game
+          </Button>
         </div>
       )}
 
