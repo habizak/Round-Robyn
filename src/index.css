@@ -26,7 +26,6 @@ body {
 .setup-screen {
   width: 100%;
   max-width: 420px;
-  height: 100vh;
   height: 100dvh;
   margin: 0 auto;
   display: flex;
