@@ -60,7 +60,10 @@ export function Match() {
     const team1Players = match.team1.map(id => getPlayerName(session, id))
     const team2Players = match.team2.map(id => getPlayerName(session, id))
     return (
-      <div key={court.id} style={{ marginBottom: '16px' }}>
+      <div
+        key={court.id}
+        style={{ marginBottom: activeCourts.length > 2 ? 0 : '16px' }}
+      >
         <div
           style={{
             fontFamily: "'JetBrains Mono', monospace",
@@ -138,7 +141,10 @@ export function Match() {
     const emptyMatchNum = nextMatchNumber + courtIndex
 
     return (
-      <div key={court.id} style={{ marginBottom: '16px' }}>
+      <div
+        key={court.id}
+        style={{ marginBottom: activeCourts.length > 2 ? 0 : '16px' }}
+      >
         <div
           style={{
             fontFamily: "'JetBrains Mono', monospace",
@@ -250,7 +256,13 @@ export function Match() {
             <img src="/icon_court-small.png" alt="" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />Courts
           </div>
 
-          <div>
+          <div
+            style={activeCourts.length > 2 ? {
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '12px',
+            } : undefined}
+          >
             {activeCourts.map((court, courtIndex) => {
               const match = getMatchForCourt(court.id)
               return match

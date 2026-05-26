@@ -162,7 +162,11 @@ export function GenerateMatch() {
   const [filterModalOpen, setFilterModalOpen] = useState(false)
   const [filterPlayerIds, setFilterPlayerIds] = useState<string[]>([])
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
-  const [chosenType, setChosenType] = useState<'singles' | 'random-doubles'>('singles')
+  const [chosenType, setChosenType] = useState<'singles' | 'random-doubles'>(() => {
+    if (!courtId) return 'singles'
+    const saved = session.courtMatchTypes?.[courtId]
+    return saved ?? 'singles'
+  })
   const [pickerPage, setPickerPage] = useState(0)
 
   const isMixed = session.mode === 'mixed'
