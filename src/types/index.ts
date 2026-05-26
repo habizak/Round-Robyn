@@ -44,4 +44,5 @@ export type Session = {
   currentRound: number
   status: 'setup' | 'active' | 'ended'
   byeHistory: string[]  // player ids who have had byes, for fairness
+  courtMatchTypes: Record<string, 'singles' | 'random-doubles'>
 }

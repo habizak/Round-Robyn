@@ -41,12 +41,13 @@ const initialSession: Session = {
   currentRound: 1,
   status: 'setup',
   byeHistory: [],
+  courtMatchTypes: {},
 }
 
 function normalizeLoadedSession(session: Session): Session {
   const mode: SessionMode = session.mode ?? session.matchType ?? 'singles'
   const matchType: MatchType = session.matchType ?? (mode === 'mixed' ? 'singles' : mode)
-  return { ...session, mode, matchType }
+  return { ...session, mode, matchType, courtMatchTypes: session.courtMatchTypes ?? {} }
 }
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
@@ -265,6 +266,12 @@ export function sessionReducer(state: Session, action: Action): Session {
         courts,
         players,
         matches: [...state.matches, newMatch],
+        courtMatchTypes: {
+          ...state.courtMatchTypes,
+          [action.courtId]: action.matchType === 'fixed-doubles'
+            ? 'random-doubles'
+            : action.matchType as 'singles' | 'random-doubles',
+        },
       }
     }
 
