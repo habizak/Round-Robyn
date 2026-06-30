@@ -3,16 +3,38 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSession, getPlayerName, getCompletedMatches, getBenchedPlayers, getPlayerMatchCounts } from '../hooks/useSession'
 import { Button } from '../components/Button'
 import { Modal } from '../components/Modal'
+import { ScoringSheet } from '../components/ScoringSheet'
 import { canGenerateOnCourt } from '../domain/sessionRules'
 import type { Match as MatchType, Player, Court } from '../types'
+
+type ScoringParams = {
+  scoringMatchId: string
+  scoringStep: 'winner' | 'score'
+  winnerTeam: 'team1' | 'team2'
+}
+
+function readScoringFromParams(searchParams: URLSearchParams): ScoringParams | null {
+  const scoringMatchId = searchParams.get('scoring')
+  if (!scoringMatchId) return null
+
+  return {
+    scoringMatchId,
+    scoringStep: searchParams.get('step') === 'score' ? 'score' : 'winner',
+    winnerTeam: searchParams.get('winner') === 'team2' ? 'team2' : 'team1',
+  }
+}
 
 export function Match() {
   const { session, dispatch } = useSession()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const scoringFromParams = readScoringFromParams(searchParams)
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [filterModalOpen, setFilterModalOpen] = useState(false)
   const [filterPlayerId, setFilterPlayerId] = useState<string | null>(null)
+  const [localScoring, setLocalScoring] = useState<ScoringParams | null>(null)
+
+  const activeScoring = localScoring ?? scoringFromParams
 
   const tab = searchParams.get('tab') === 'history' ? 'history' : 'match'
 
@@ -42,7 +64,25 @@ export function Match() {
   }
 
   function handleAddScore(matchId: string) {
-    navigate(`/match/score/${matchId}/winner`)
+    setLocalScoring({
+      scoringMatchId: matchId,
+      scoringStep: 'winner',
+      winnerTeam: 'team1',
+    })
+  }
+
+  function clearScoringParams() {
+    if (!searchParams.has('scoring')) return
+    const next = new URLSearchParams(searchParams)
+    next.delete('scoring')
+    next.delete('step')
+    next.delete('winner')
+    setSearchParams(next, { replace: true })
+  }
+
+  function handleCloseScoring() {
+    setLocalScoring(null)
+    clearScoringParams()
   }
 
   function handleEndSession() {
@@ -534,6 +574,15 @@ export function Match() {
           </Button>
         </div>
       </Modal>
+
+      <ScoringSheet
+        key={activeScoring ? `${activeScoring.scoringMatchId}-${activeScoring.scoringStep}` : 'closed'}
+        open={activeScoring !== null}
+        matchId={activeScoring?.scoringMatchId ?? null}
+        onClose={handleCloseScoring}
+        initialStep={activeScoring?.scoringStep ?? 'winner'}
+        initialWinnerTeam={activeScoring?.winnerTeam ?? 'team1'}
+      />
 
       {/* Filter modal */}
       <Modal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter by Player">
